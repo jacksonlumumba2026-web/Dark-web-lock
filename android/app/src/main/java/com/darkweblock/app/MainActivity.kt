@@ -298,9 +298,9 @@ class MainActivity : ComponentActivity() {
         )
         logEntries.value = connectionLog.entries()
 
-        // When location saving is on, capture where the phone is on a disconnect,
-        // the same as the background service does.
-        if (!connected && MonitorService.isLocationEnabled(this) && DeviceLocation.hasPermission(this)) {
+        // When location saving is on, capture where the phone is on every change
+        // (connect and disconnect), the same as the background service does.
+        if (MonitorService.isLocationEnabled(this) && DeviceLocation.hasPermission(this)) {
             DeviceLocation.lastKnown(this)?.let {
                 connectionLog.updateLocation(device.address, at, it.lat, it.lon, it.accuracyM)
                 logEntries.value = connectionLog.entries()

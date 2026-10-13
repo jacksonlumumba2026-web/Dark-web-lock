@@ -297,7 +297,7 @@ private fun LastKnownPlace(entry: LogEntry, label: String, onOpenMap: (Double, D
             Text("Where you last had them", color = Palette.Accent, fontSize = 12.sp, letterSpacing = 1.sp)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Disconnected ${formatEventTime(entry.epochMillis)}" +
+                "${entry.label} ${formatEventTime(entry.epochMillis)}" +
                     (entry.accuracyM?.let { " · within ${it.toInt()} m" } ?: ""),
                 color = Palette.Text,
                 fontSize = 14.sp,
@@ -321,7 +321,7 @@ private fun LastKnownPlace(entry: LogEntry, label: String, onOpenMap: (Double, D
 
 /** The most recent disconnect for this device that captured a location. */
 private fun lastKnownPlace(address: String, logEntries: List<LogEntry>): LogEntry? =
-    logEntries.firstOrNull { it.address == address && !it.connected && it.hasLocation }
+    logEntries.firstOrNull { it.address == address && it.hasLocation }
 
 private fun audioProfiles(device: PairedDevice): String {
     val labels = device.services?.filter { !it.isVendor }?.map { it.label }?.filter {

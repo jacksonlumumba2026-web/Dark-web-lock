@@ -109,12 +109,12 @@ class MonitorService : Service() {
         val now = System.currentTimeMillis()
         val name = deviceName(device)
         log.add(LogEntry(device.address, name, connected, now))
+        attachLocation(device.address, now)
 
         if (connected) {
             connectedSince[device.address] = now
             return
         }
-        attachLocation(device.address, now)
 
         // Alert on disconnect only if the device had been connected long enough,
         // so taking the earbuds out and putting them straight back does not alert.
