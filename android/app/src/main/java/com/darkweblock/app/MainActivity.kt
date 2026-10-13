@@ -58,6 +58,8 @@ class MainActivity : ComponentActivity() {
     private val connectionStatus = mutableStateMapOf<String, ConnectionStatus>()
 
     private lateinit var connectionLog: ConnectionLog
+    private lateinit var ownerStore: OwnerStore
+    private val ownerProfile = mutableStateOf(OwnerProfile())
 
     /** Connection history entries, newest first, shown in the UI. */
     private val logEntries = mutableStateOf<List<LogEntry>>(emptyList())
@@ -129,6 +131,8 @@ class MainActivity : ComponentActivity() {
         scanner = NearbyScanner(applicationContext)
         connectionReader = ConnectionStatusReader(applicationContext)
         connectionLog = ConnectionLog(applicationContext)
+        ownerStore = OwnerStore(applicationContext)
+        ownerProfile.value = ownerStore.load()
         logEntries.value = connectionLog.entries()
         refresh()
 
@@ -136,6 +140,7 @@ class MainActivity : ComponentActivity() {
             DarkWebLockTheme {
                 HomeScreen(
                     status = status.value,
+                    ownerProfile = ownerProfile.value,
                     connectPermission = connectPermission.value,
                     scanPermission = scanPermission.value,
                     pairedDevices = pairedDevices.value,
@@ -160,6 +165,9 @@ class MainActivity : ComponentActivity() {
                     onShareLog = { share("Dark Web Lock connection history", connectionLogReport(logEntries.value)) },
                     onSetMonitoring = ::setMonitoring,
                     onOpenBatterySettings = ::openBatterySettings,
+                    onSaveOwner = ::saveOwner,
+                    onClearOwner = ::clearOwner,
+                    onShareOwnership = ::shareOwnership,
                 )
             }
         }
@@ -272,6 +280,31 @@ class MainActivity : ComponentActivity() {
     private fun clearLog() {
         connectionLog.clear()
         logEntries.value = emptyList()
+    }
+
+    private fun saveOwner(profile: OwnerProfile) {
+        ownerStore.save(profile)
+        ownerProfile.value = profile
+    }
+
+    private fun clearOwner() {
+        ownerStore.clear()
+        ownerProfile.value = OwnerProfile()
+    }
+
+    /** The audio device the dashboard features: the first paired audio device, else the first. */
+    private fun primaryDevice(): PairedDevice? =
+        pairedDevices.value.firstOrNull { it.isAudio } ?: pairedDevices.value.firstOrNull()
+
+    private fun shareOwnership() {
+        val device = primaryDevice() ?: return
+        val connection = connectionStatus[device.address]
+        val seen = when {
+            connection?.isConnected == true -> "Connected now"
+            else -> logEntries.value.firstOrNull { it.address == device.address && it.connected }
+                ?.let { formatEventTime(it.epochMillis) } ?: "No record yet"
+        }
+        share("Dark Web Lock ownership record", ownershipRecord(ownerProfile.value, device, connection, seen))
     }
 
     private fun setMonitoring(enabled: Boolean) {

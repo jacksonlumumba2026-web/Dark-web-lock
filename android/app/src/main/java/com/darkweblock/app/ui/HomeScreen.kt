@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.darkweblock.app.BluetoothStatus
 import com.darkweblock.app.ConnectionStatus
 import com.darkweblock.app.LogEntry
+import com.darkweblock.app.OwnerProfile
 import com.darkweblock.app.NearbyScanner
 import com.darkweblock.app.PermissionState
 import com.darkweblock.app.PairedDevice
@@ -43,6 +44,7 @@ import com.darkweblock.app.PairedDevice
 @Composable
 fun HomeScreen(
     status: BluetoothStatus,
+    ownerProfile: OwnerProfile,
     connectPermission: PermissionState,
     scanPermission: PermissionState,
     pairedDevices: List<PairedDevice>,
@@ -67,6 +69,9 @@ fun HomeScreen(
     onShareLog: () -> Unit,
     onSetMonitoring: (Boolean) -> Unit,
     onOpenBatterySettings: () -> Unit,
+    onSaveOwner: (OwnerProfile) -> Unit,
+    onClearOwner: () -> Unit,
+    onShareOwnership: () -> Unit,
 ) {
     Box(
         Modifier
@@ -89,6 +94,16 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Header()
+            DashboardCard(
+                profile = ownerProfile,
+                device = pairedDevices.firstOrNull { it.isAudio } ?: pairedDevices.firstOrNull(),
+                connection = (pairedDevices.firstOrNull { it.isAudio } ?: pairedDevices.firstOrNull())
+                    ?.let { connectionStatus[it.address] },
+                logEntries = logEntries,
+                onSave = onSaveOwner,
+                onClear = onClearOwner,
+                onShareCertificate = onShareOwnership,
+            )
             StatusCard(status, onRefresh, onOpenBluetoothSettings)
             PairedDevicesCard(
                 status = status,
@@ -126,7 +141,7 @@ fun HomeScreen(
             )
             ScopeCard()
             Text(
-                "v0.6.1 · Step 6 · Test build",
+                "v0.7 · Step 7 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
@@ -160,7 +175,7 @@ private fun Header() {
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            "See exactly what your phone's Bluetooth can and cannot do — no guesses, no fake locks.",
+            "Your earbuds, registered and verified — with honest limits, no fake locks.",
             color = Palette.Muted,
             fontSize = 16.sp,
             lineHeight = 23.sp,
