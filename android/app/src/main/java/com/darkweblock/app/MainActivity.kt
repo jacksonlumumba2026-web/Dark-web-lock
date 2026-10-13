@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var connectionLog: ConnectionLog
     private lateinit var ownerStore: OwnerStore
     private val ownerProfile = mutableStateOf(OwnerProfile())
+    private val isPro = mutableStateOf(false)
 
     /** Connection history entries, newest first, shown in the UI. */
     private val logEntries = mutableStateOf<List<LogEntry>>(emptyList())
@@ -155,6 +156,7 @@ class MainActivity : ComponentActivity() {
                 HomeScreen(
                     status = status.value,
                     ownerProfile = ownerProfile.value,
+                    isPro = isPro.value,
                     connectPermission = connectPermission.value,
                     scanPermission = scanPermission.value,
                     pairedDevices = pairedDevices.value,
@@ -186,6 +188,7 @@ class MainActivity : ComponentActivity() {
                     onSaveOwner = ::saveOwner,
                     onClearOwner = ::clearOwner,
                     onShareOwnership = ::shareOwnership,
+                    onUnlockPro = ::unlockProTest,
                 )
             }
         }
@@ -251,6 +254,9 @@ class MainActivity : ComponentActivity() {
             } else {
                 emptyList()
             }
+        // The free plan fully tracks the first device in the sorted list.
+        PlanStore.setFreeDeviceAddress(this, pairedDevices.value.firstOrNull()?.address)
+        isPro.value = PlanStore.isPro(this)
         refreshConnections()
     }
 
@@ -300,7 +306,9 @@ class MainActivity : ComponentActivity() {
 
         // When location saving is on, capture where the phone is on every change
         // (connect and disconnect), the same as the background service does.
-        if (MonitorService.isLocationEnabled(this) && DeviceLocation.hasPermission(this)) {
+        if (MonitorService.isLocationEnabled(this) && DeviceLocation.hasPermission(this) &&
+            PlanStore.locationAllowedFor(this, device.address)
+        ) {
             DeviceLocation.lastKnown(this)?.let {
                 connectionLog.updateLocation(device.address, at, it.lat, it.lon, it.accuracyM)
                 logEntries.value = connectionLog.entries()
@@ -317,6 +325,12 @@ class MainActivity : ComponentActivity() {
     private fun clearLog() {
         connectionLog.clear()
         logEntries.value = emptyList()
+    }
+
+    private fun unlockProTest() {
+        // TEST unlock only — real Google Play Billing is not wired in yet.
+        PlanStore.setPro(this, !PlanStore.isPro(this))
+        isPro.value = PlanStore.isPro(this)
     }
 
     private fun saveOwner(profile: OwnerProfile) {

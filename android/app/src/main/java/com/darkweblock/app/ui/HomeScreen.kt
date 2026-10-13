@@ -45,6 +45,7 @@ import com.darkweblock.app.PairedDevice
 fun HomeScreen(
     status: BluetoothStatus,
     ownerProfile: OwnerProfile,
+    isPro: Boolean,
     connectPermission: PermissionState,
     scanPermission: PermissionState,
     pairedDevices: List<PairedDevice>,
@@ -76,6 +77,7 @@ fun HomeScreen(
     onSaveOwner: (OwnerProfile) -> Unit,
     onClearOwner: () -> Unit,
     onShareOwnership: () -> Unit,
+    onUnlockPro: () -> Unit,
 ) {
     Box(
         Modifier
@@ -107,6 +109,8 @@ fun HomeScreen(
                 onClear = onClearOwner,
                 onShareCertificate = onShareOwnership,
                 onOpenMap = onOpenMap,
+                isPro = isPro,
+                onUnlockPro = onUnlockPro,
             )
             StatusCard(status, onRefresh, onOpenBluetoothSettings)
             PairedDevicesCard(
@@ -149,7 +153,7 @@ fun HomeScreen(
             )
             ScopeCard()
             Text(
-                "v0.9 · Step 9 · Test build",
+                "v0.10 · Step 10 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,

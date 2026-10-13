@@ -38,6 +38,7 @@ import com.darkweblock.app.ConnectionStatus
 import com.darkweblock.app.LogEntry
 import com.darkweblock.app.OwnerProfile
 import com.darkweblock.app.PairedDevice
+import com.darkweblock.app.PlanStore
 import com.darkweblock.app.formatEventTime
 
 @Composable
@@ -50,6 +51,8 @@ fun DashboardCard(
     onClear: () -> Unit,
     onShareCertificate: () -> Unit,
     onOpenMap: (Double, Double, String) -> Unit,
+    isPro: Boolean,
+    onUnlockPro: () -> Unit,
 ) {
     var editing by remember(profile) { mutableStateOf(!profile.isRegistered) }
 
@@ -88,14 +91,21 @@ fun DashboardCard(
                 )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    devices.forEach { device ->
+                    devices.forEachIndexed { index, device ->
+                        val locationUnlocked = isPro || index < PlanStore.FREE_DEVICE_LIMIT
                         DeviceTile(
                             device = device,
                             connection = connectionStatus[device.address],
                             logEntries = logEntries,
+                            locationUnlocked = locationUnlocked,
                             onOpenMap = onOpenMap,
+                            onUnlockPro = onUnlockPro,
                         )
                     }
+                }
+                if (!isPro && devices.size > PlanStore.FREE_DEVICE_LIMIT) {
+                    Spacer(Modifier.height(12.dp))
+                    ProCard(devices.size - PlanStore.FREE_DEVICE_LIMIT, onUnlockPro)
                 }
             }
 
@@ -137,7 +147,9 @@ private fun DeviceTile(
     device: PairedDevice,
     connection: ConnectionStatus?,
     logEntries: List<LogEntry>,
+    locationUnlocked: Boolean,
     onOpenMap: (Double, Double, String) -> Unit,
+    onUnlockPro: () -> Unit,
 ) {
     var expanded by remember(device.address) { mutableStateOf(false) }
     val title = device.alias ?: device.name ?: "(no name)"
@@ -163,7 +175,10 @@ private fun DeviceTile(
             Fact("Last seen connected", lastSeen(device.address, connection, logEntries))
 
             val place = lastKnownPlace(device.address, logEntries)
-            if (place != null) {
+            if (!locationUnlocked) {
+                Spacer(Modifier.height(12.dp))
+                LockedLocation(onUnlockPro)
+            } else if (place != null) {
                 Spacer(Modifier.height(12.dp))
                 LastKnownPlace(place, title, onOpenMap)
             }
@@ -311,6 +326,71 @@ private fun LastKnownPlace(entry: LogEntry, label: String, onOpenMap: (Double, D
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent),
             ) { Text("Open in Maps", fontWeight = FontWeight.SemiBold) }
+        }
+    }
+}
+
+@Composable
+private fun LockedLocation(onUnlockPro: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Palette.Ink.copy(alpha = 0.45f))
+            .padding(14.dp),
+    ) {
+        Column {
+            Text("🔒 Location locked", color = Palette.Warn, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "The free plan tracks one device's location. Unlock Pro to track this one too.",
+                color = Palette.Muted,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onUnlockPro,
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                shape = RoundedCornerShape(14.dp),
+            ) { Text("Unlock Pro", color = Palette.Text, fontSize = 13.sp) }
+        }
+    }
+}
+
+@Composable
+private fun ProCard(lockedCount: Int, onUnlockPro: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.verticalGradient(listOf(Palette.Accent.copy(alpha = 0.22f), Palette.Ink.copy(alpha = 0.5f))))
+            .padding(18.dp),
+    ) {
+        Column {
+            Text("DARK WEB LOCK PRO", color = Palette.Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Spacer(Modifier.height(6.dp))
+            Text("Track all your devices", color = Palette.Text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "You have $lockedCount more ${if (lockedCount == 1) "device" else "devices"} that Pro would " +
+                    "track the location of, with full history.",
+                color = Palette.Muted,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onUnlockPro,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent),
+            ) { Text("Unlock Pro (test)", fontWeight = FontWeight.SemiBold) }
+            Text(
+                "Test unlock — real in-app purchase is not set up yet.",
+                color = Palette.Muted,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 6.dp),
+            )
         }
     }
 }

@@ -128,6 +128,7 @@ class MonitorService : Service() {
     /** Overwrites the just-logged disconnect with a copy carrying the location. */
     private fun attachLocation(address: String, at: Long) {
         if (!isLocationEnabled(applicationContext) || !DeviceLocation.hasPermission(this)) return
+        if (!PlanStore.locationAllowedFor(applicationContext, address)) return // free plan: one device
         // Save last-known immediately so there is always a pin, then upgrade it
         // with a fresh, more accurate fix when it arrives.
         DeviceLocation.lastKnown(this)?.let { log.updateLocation(address, at, it.lat, it.lon, it.accuracyM) }
