@@ -39,8 +39,8 @@ fun ConnectionLogCard(
         Text("Connection history", color = Palette.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Each time a paired device connects or disconnects while this app is open. " +
-                "It cannot record events that happen while the app is closed — that needs the alert step.",
+            "Each time a paired device connects or disconnects. With background monitoring on, changes are " +
+                "recorded even while the app is closed; with it off, only while the app is open.",
             color = Palette.Muted,
             fontSize = 14.sp,
             lineHeight = 20.sp,
