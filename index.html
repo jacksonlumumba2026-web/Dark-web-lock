@@ -2,358 +2,467 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#090b10">
-<title>Dark Web Lock</title>
-<style>
-:root {
-  --bg:#090b10;
-  --panel:#131720;
-  --line:#252c39;
-  --text:#f4f6fb;
-  --muted:#98a2b5;
-  --blue:#5c8dff;
-  --red:#ff5268;
-  --green:#42d9a0;
-}
-* { box-sizing:border-box; }
-body {
-  margin:0; background:var(--bg); color:var(--text);
-  font-family:Arial,sans-serif; min-height:100vh;
-}
-main { max-width:480px; margin:auto; padding:24px 18px 36px; }
-header { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
-.logo {
-  width:46px;height:46px;border-radius:15px;
-  display:grid;place-items:center;background:#202b45;
-  border:1px solid #35466b;font-size:24px;
-}
-h1 {font-size:20px;margin:0 0 5px;}
-header p,.muted {color:var(--muted);font-size:13px;margin:0;}
-.tag {
-  display:inline-block;padding:6px 10px;border-radius:20px;
-  background:#2b2116;color:#ffc878;font-size:11px;
-  font-weight:bold;letter-spacing:.5px;
-}
-h2 {font-size:17px;margin:0 0 15px;}
-.panel {
-  background:var(--panel);border:1px solid var(--line);
-  border-radius:19px;padding:19px;margin-bottom:16px;
-}
-.status-row {display:flex;align-items:center;gap:14px;}
-.status-icon {
-  width:48px;height:48px;display:grid;place-items:center;
-  border-radius:15px;background:#202b45;font-size:24px;
-}
-.status-row strong {display:block;margin-bottom:5px;}
-.status-row .muted {line-height:1.5;}
-.pill {
-  margin-left:auto;font-size:11px;font-weight:bold;
-  padding:7px 9px;border-radius:20px;background:#30251b;
-  color:#ffc878;white-space:nowrap;
-}
-.pill.locked {background:#302027;color:#ff8292;}
-.pill.unlocked {background:#163127;color:#66e5b2;}
-input {
-  display:block;width:100%;margin:9px 0 15px;
-  padding:14px;border-radius:11px;border:1px solid var(--line);
-  background:#0b0e15;color:var(--text);font-size:15px;
-  outline:none;
-}
-input:focus {border-color:var(--blue);}
-label {font-size:13px;color:#c4cada;}
-button {
-  width:100%;padding:14px;border:0;border-radius:12px;
-  font-size:14px;font-weight:bold;cursor:pointer;
-  background:var(--blue);color:white;margin-top:8px;
-}
-button.secondary {background:#252c39;color:var(--text);}
-button.danger {background:#3a2028;color:#ff9aaa;}
-button:active {opacity:.8;}
-.big-status {
-  text-align:center;padding:15px 0 19px;
-}
-.lock-symbol {font-size:52px;margin-bottom:12px;}
-.big-status h2 {font-size:22px;margin-bottom:9px;}
-.big-status p {color:var(--muted);font-size:13px;line-height:1.6;}
-.notice {
-  border:1px solid #624a29;background:#261e14;
-  color:#ffd49b;padding:13px;border-radius:12px;
-  font-size:12px;line-height:1.6;margin-bottom:16px;
-}
-.row {
-  display:flex;justify-content:space-between;gap:12px;
-  padding:12px 0;border-bottom:1px solid var(--line);
-  font-size:13px;
-}
-.row:last-child {border-bottom:0;}
-.row span:first-child {color:var(--muted);}
-.row span:last-child {text-align:right;overflow-wrap:anywhere;}
-.small {font-size:11px;color:var(--muted);line-height:1.6;}
-.hidden {display:none;}
-footer {text-align:center;padding:12px;font-size:11px;color:var(--muted);}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090b10">
+  <title>Dark Web Lock</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px 14px 40px;
+      background: #090b10;
+      color: #f4f5f8;
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 650px;
+      margin: auto;
+    }
+
+    header {
+      padding: 20px 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: -1px;
+    }
+
+    h1 span {
+      color: #5989ff;
+    }
+
+    .subtitle, .muted, .small {
+      color: #9ba4b5;
+    }
+
+    .subtitle {
+      margin-top: 5px;
+    }
+
+    .panel {
+      background: #131720;
+      border: 1px solid #252b37;
+      border-radius: 25px;
+      padding: 24px;
+      margin: 18px 0;
+      overflow-wrap: anywhere;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
+    }
+
+    .status {
+      display: inline-block;
+      background: #183d2d;
+      color: #75e6ad;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+
+    .warning {
+      background: #2a2117;
+      border: 1px solid #57452e;
+      border-radius: 20px;
+      padding: 20px;
+      color: #e8c89a;
+      margin: 18px 0;
+    }
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 18px;
+      padding: 17px 12px;
+      margin-top: 12px;
+      background: #5989ff;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:active {
+      opacity: 0.8;
+    }
+
+    button.secondary {
+      background: #252d3b;
+    }
+
+    button.danger {
+      background: #3a2029;
+      color: #ff9aaf;
+    }
+
+    button.off {
+      background: #3a2029;
+      color: #ff9aaf;
+    }
+
+    input {
+      width: 100%;
+      background: #0d1119;
+      color: white;
+      border: 1px solid #343c4b;
+      border-radius: 12px;
+      padding: 14px;
+      margin: 6px 0 14px;
+      font-size: 16px;
+    }
+
+    label {
+      display: block;
+      color: #c2c9d5;
+      font-size: 14px;
+    }
+
+    .small {
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .divider {
+      border: 0;
+      border-top: 1px solid #292f3b;
+      margin: 22px 0;
+    }
+
+    footer {
+      text-align: center;
+      color: #858e9f;
+      font-size: 12px;
+      margin-top: 30px;
+    }
+  </style>
 </head>
+
 <body>
-<main>
-<header>
-  <div class="logo">🔐</div>
-  <div>
-    <h1>DARK WEB LOCK</h1>
-    <p>Personal headphone security lab</p>
-  </div>
-</header>
+<div class="container">
 
-<div style="margin-bottom:18px">
-  <span class="tag">PROTOTYPE V1 · SIMULATION ONLY</span>
-</div>
+  <header>
+    <h1>DARK WEB <span>LOCK</span></h1>
+    <div class="subtitle">
+      Experimental Bluetooth ownership project
+    </div>
+  </header>
 
-<section id="registration" class="panel">
-  <h2>Register owner</h2>
-  <p class="muted" style="line-height:1.6;margin-bottom:18px">
-    Create your local demo profile to start testing the interface.
-  </p>
-  <form id="ownerForm">
-    <label for="owner">Owner name</label>
-    <input id="owner" placeholder="Enter your name"
-      maxlength="50" required>
-    <label for="phone">Your device label</label>
-    <input id="phone" placeholder="e.g. My Samsung A07"
-      maxlength="60" required>
-    <label for="earbuds">Headphone name</label>
-    <input id="earbuds" value="Dark web" maxlength="60" required>
-    <button type="submit">Register demo owner</button>
-  </form>
-  <p class="small" style="margin-top:14px">
-    Demo only: registration does not prove device identity or
-    protect the profile from someone who can access this browser.
-  </p>
-</section>
+  <section class="panel">
+    <h2>Device dashboard</h2>
+    <p class="muted">
+      Manage your owner profile and test the available Bluetooth features.
+    </p>
 
-<section id="dashboard" class="hidden">
-  <div class="panel">
-    <div class="status-row">
-      <div class="status-icon">🎧</div>
-      <div>
-        <strong id="headphoneName">Dark web</strong>
-        <p class="muted">TWS Bluetooth earbuds</p>
-      </div>
-      <span class="pill">NOT VERIFIED</span>
-    </div>
-    <div class="row">
-      <span>Bluetooth connection</span>
-      <span>Not checked</span>
-    </div>
-    <div class="row">
-      <span>Registered owner</span>
-      <span id="ownerDisplay">—</span>
-    </div>
-    <div class="row">
-      <span>Authorized phone label</span>
-      <span id="phoneDisplay">—</span>
-    </div>
-  </div>
+    <p><strong>Registered device:</strong>
+      <span id="dashboardDevice">TWS Earbuds</span>
+    </p>
 
-  <div class="panel">
-    <div class="big-status">
-      <div class="lock-symbol" id="lockSymbol">🔒</div>
-      <h2 id="lockTitle">Demo lock is ON</h2>
-      <p id="lockDescription">
-        This is a simulated status. Your earbuds are not
-        being locked by this webpage.
-      </p>
-      <span class="tag">SIMULATED LOCK</span>
+    <p><strong>Owner:</strong>
+      <span id="dashboardOwner">Not registered</span>
+    </p>
+
+    <hr class="divider">
+
+    <h2>Demo lock status</h2>
+
+    <p class="muted">
+      This status changes only the demonstration on this webpage.
+    </p>
+
+    <div>
+      <span class="status" id="lockStatus">SIMULATED LOCK OFF</span>
     </div>
-    <button id="toggleLock">Turn demo lock OFF</button>
-    <button class="secondary" id="testButton">
+
+    <button id="toggleLock">Turn demo lock ON</button>
+    <button class="secondary" id="runTest">
       Run ownership demo test
     </button>
-    <p id="testResult" class="small" style="margin-top:14px">
+
+    <p class="small" id="testResult">
       No test has been run.
     </p>
-  </div>
+  </section>
 
-<div class="panel">
-  <h2>Bluetooth connection check</h2>
-  <p class="muted" style="line-height:1.6">
-    Check whether your browser supports Bluetooth device selection.
-  </p>
-  <button id="bluetoothCheck">Check Bluetooth support</button>
-  
-<button id="connectBluetooth" style="margin-top:12px">
-  Connect to TWS Earbuds
-</button>
+  <section class="panel">
+    <h2>Bluetooth connection check</h2>
 
-<p id="connectResult" class="small" style="margin-top:12px">
-  Earbuds not selected.
-</p>
+    <p class="muted">
+      Check whether this browser exposes Bluetooth device selection.
+    </p>
 
-  <p id="bluetoothResult" class="small" style="margin-top:12px">
-    No check performed yet.
-  </p>
+    <button id="bluetoothCheck">
+      Check Bluetooth support
+    </button>
+
+    <p class="small" id="bluetoothResult">
+      No check performed yet.
+    </p>
+
+    <hr class="divider">
+
+    <h2>Connect to TWS Earbuds</h2>
+
+    <p class="muted">
+      Request permission to select a nearby Bluetooth device.
+    </p>
+
+    <button id="connectBluetooth">
+      Connect to TWS Earbuds
+    </button>
+
+    <p class="small" id="connectResult">
+      No device selected.
+    </p>
+
+    <p class="small muted">
+      Selecting a device does not mean a Bluetooth connection has
+      been established.
+    </p>
+  </section>
+
+  <section class="warning">
+    <strong>Security limitation</strong>
+    <p style="margin-bottom:0">
+      This webpage cannot block Bluetooth pairing, disable stolen earbuds,
+      or verify that the connected phone is physically yours.
+      The lock button is a simulation. Real locking requires compatible
+      earbud firmware or hardware.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Owner profile</h2>
+
+    <p class="muted">
+      Profile details are stored locally in this browser for demonstration.
+    </p>
+
+    <div id="profileDisplay">
+      <p><strong>Name:</strong> <span id="ownerName">Not registered</span></p>
+      <p><strong>Phone:</strong> <span id="ownerPhone">Not registered</span></p>
+      <p><strong>Earbuds:</strong> <span id="ownerDevice">TWS Earbuds</span></p>
+    </div>
+
+    <hr class="divider">
+
+    <form id="ownerForm">
+      <label for="nameInput">Owner name</label>
+      <input id="nameInput" maxlength="60" placeholder="Enter owner name">
+
+      <label for="phoneInput">Phone label</label>
+      <input id="phoneInput" maxlength="60" placeholder="e.g. My Samsung phone">
+
+      <label for="deviceInput">Earbud name</label>
+      <input id="deviceInput" maxlength="60" placeholder="e.g. TWS">
+
+      <button type="submit">Save owner details</button>
+    </form>
+
+    <button class="secondary" id="editProfile">Edit owner details</button>
+    <button class="danger" id="eraseProfile">Erase demo profile</button>
+
+    <p class="small" id="profileMessage"></p>
+  </section>
+
+  <footer>
+    DARK WEB LOCK · EXPERIMENTAL PROJECT
+  </footer>
+
 </div>
 
-  <div class="notice">
-    <strong>Security limitation</strong><br>
-    This webpage cannot block Bluetooth pairing, disable stolen
-    earbuds or verify that the connected phone is physically yours.
-    The lock button changes only this demonstration.
-  </div>
-
-  <div class="panel">
-    <h2>Owner profile</h2>
-    <p class="muted" style="margin-bottom:12px">
-      Stored locally in this browser for demonstration.
-    </p>
-    <button class="secondary" id="editButton">Edit owner details</button>
-    <button class="danger" id="resetButton">Erase demo profile</button>
-  </div>
-</section>
-
-<footer> DARK WEB LOCK · EXPERIMENTAL PROJECT </footer>
-</main>
-
 <script>
-const $ = id => document.getElementById(id);
-const KEY = "darkWebLockDemoProfileV1";
-let locked = true;
+  const $ = id => document.getElementById(id);
 
-function loadProfile() {
+  let profile = {};
+  let demoLock = false;
+
   try {
-    const value = localStorage.getItem(KEY);
-    return value ? JSON.parse(value) : null;
-  } catch {
-    return null;
+    profile = JSON.parse(
+      localStorage.getItem("darkWebLockProfile") || "{}"
+    );
+    demoLock =
+      localStorage.getItem("darkWebLockState") === "true";
+  } catch (error) {
+    profile = {};
   }
-}
 
-function showRegistration(profile = null) {
-  $("registration").classList.remove("hidden");
-  $("dashboard").classList.add("hidden");
-  if (profile) {
-    $("owner").value = profile.owner || "";
-    $("phone").value = profile.phone || "";
-    $("earbuds").value = profile.earbuds || "Dark web";
+  function saveProfile() {
+    try {
+      localStorage.setItem(
+        "darkWebLockProfile",
+        JSON.stringify(profile)
+      );
+      return true;
+    } catch (error) {
+      $("profileMessage").textContent =
+        "Could not save profile in this browser.";
+      return false;
+    }
   }
-}
 
-function showDashboard(profile) {
-  $("registration").classList.add("hidden");
-  $("dashboard").classList.remove("hidden");
-  $("ownerDisplay").textContent = profile.owner;
-  $("phoneDisplay").textContent = profile.phone;
-  $("headphoneName").textContent = profile.earbuds;
-  renderLock();
-}
+  function renderProfile() {
+    $("dashboardOwner").textContent =
+      profile.name || "Not registered";
 
-function renderLock() {
-  $("lockSymbol").textContent = locked ? "🔒" : "🔓";
-  $("lockTitle").textContent =
-    locked ? "Demo lock is ON" : "Demo lock is OFF";
-  $("lockDescription").textContent = locked
-    ? "The simulated lock is enabled in this webpage only."
-    : "The simulated lock is disabled in this webpage only.";
-  $("toggleLock").textContent =
-    locked ? "Turn demo lock OFF" : "Turn demo lock ON";
-  $("toggleLock").className = locked ? "danger" : "";
-}
+    $("dashboardDevice").textContent =
+      profile.device || "TWS Earbuds";
 
-$("ownerForm").addEventListener("submit", event => {
-  event.preventDefault();
-  const profile = {
-    owner: $("owner").value.trim(),
-    phone: $("phone").value.trim(),
-    earbuds: $("earbuds").value.trim()
-  };
-  if (!profile.owner || !profile.phone || !profile.earbuds) {
-    alert("Complete all fields first.");
-    return;
+    $("ownerName").textContent =
+      profile.name || "Not registered";
+
+    $("ownerPhone").textContent =
+      profile.phone || "Not registered";
+
+    $("ownerDevice").textContent =
+      profile.device || "TWS Earbuds";
+
+    $("nameInput").value = profile.name || "";
+    $("phoneInput").value = profile.phone || "";
+    $("deviceInput").value = profile.device || "";
   }
-  try {
-    localStorage.setItem(KEY, JSON.stringify(profile));
-    locked = true;
-    showDashboard(profile);
-  } catch {
-    alert("Storage unavailable. Try another browser.");
+
+  function renderLock() {
+    $("lockStatus").textContent = demoLock
+      ? "SIMULATED LOCK ON"
+      : "SIMULATED LOCK OFF";
+
+    $("toggleLock").textContent = demoLock
+      ? "Turn demo lock OFF"
+      : "Turn demo lock ON";
+
+    $("toggleLock").classList.toggle("off", demoLock);
   }
-});
 
-$("toggleLock").addEventListener("click", () => {
-  locked = !locked;
-  renderLock();
-});
+  $("toggleLock").addEventListener("click", () => {
+    demoLock = !demoLock;
 
-$("testButton").addEventListener("click", () => {
-  $("testResult").textContent =
-    "DEMO PASSED: the profile exists and the simulated lock can " +
-    "change state. Real Bluetooth ownership verification has NOT " +
-    "been performed.";
-});
+    try {
+      localStorage.setItem(
+        "darkWebLockState",
+        String(demoLock)
+      );
+    } catch (error) {}
 
-$("editButton").addEventListener("click", () => {
-  showRegistration(loadProfile());
-});
+    renderLock();
 
-$("resetButton").addEventListener("click", () => {
-  if (confirm("Erase the saved demo profile from this browser?")) {
-    localStorage.removeItem(KEY);
-    locked = true;
-    showRegistration();
-  }
-});
+    $("testResult").textContent =
+      "Demo state changed. No real Bluetooth lock was applied.";
+  });
 
-const existing = loadProfile();
-if (existing && existing.owner && existing.phone && existing.earbuds) {
-  showDashboard(existing);
-} else {
-  showRegistration();
-}
-  
-const bluetoothButton = document.getElementById("bluetoothCheck");
-const bluetoothResult = document.getElementById("bluetoothResult");
+  $("runTest").addEventListener("click", () => {
+    const exists = Boolean(profile.name && profile.device);
 
-if (bluetoothButton && bluetoothResult) {
-  bluetoothButton.addEventListener("click", () => {
-    if ("bluetooth" in navigator) {
-      bluetoothResult.textContent =
-        "Web Bluetooth appears to be available in this browser. This does not confirm that your earbuds are connected.";
-    } else {
-      bluetoothResult.textContent =
-        "Web Bluetooth is not available in this browser. This webpage cannot check your earbuds' connection status.";
+    $("testResult").textContent = exists
+      ? "DEMO PASSED: Owner profile exists. Real Bluetooth ownership verification has NOT been performed."
+      : "DEMO INCOMPLETE: Save your owner name and earbud name first.";
+  });
+
+  $("ownerForm").addEventListener("submit", event => {
+    event.preventDefault();
+
+    profile = {
+      name: $("nameInput").value.trim(),
+      phone: $("phoneInput").value.trim(),
+      device: $("deviceInput").value.trim() || "TWS Earbuds"
+    };
+
+    if (saveProfile()) {
+      renderProfile();
+      $("profileMessage").textContent =
+        "Owner profile saved in this browser.";
     }
   });
-}
-  
-const connectButton = document.getElementById("connectBluetooth");
-const connectResult = document.getElementById("connectResult");
 
-if (connectButton && connectResult) {
-  connectButton.addEventListener("click", async () => {
-    if (!navigator.bluetooth) {
-      connectResult.textContent =
-        "Bluetooth device selection is not supported in this browser. Try a compatible version of Chrome.";
+  $("editProfile").addEventListener("click", () => {
+    $("nameInput").focus();
+    $("ownerForm").scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
+  });
+
+  $("eraseProfile").addEventListener("click", () => {
+    if (!confirm("Erase the demo owner profile from this browser?")) {
+      return;
+    }
+
+    profile = {};
+
+    try {
+      localStorage.removeItem("darkWebLockProfile");
+    } catch (error) {}
+
+    renderProfile();
+
+    $("profileMessage").textContent =
+      "Demo profile erased.";
+    $("testResult").textContent = "No test has been run.";
+  });
+
+  $("bluetoothCheck").addEventListener("click", () => {
+    $("bluetoothResult").textContent =
+      ("bluetooth" in navigator)
+        ? "Web Bluetooth API is available in this browser. This does not prove that your earbuds are connected."
+        : "Web Bluetooth API is unavailable in this browser.";
+  });
+
+  $("connectBluetooth").addEventListener("click", async () => {
+    const result = $("connectResult");
+
+    if (!navigator.bluetooth ||
+        typeof navigator.bluetooth.requestDevice !== "function") {
+      result.textContent =
+        "Bluetooth device selection is unavailable in this browser.";
       return;
     }
 
     try {
-      connectResult.textContent = "Opening Bluetooth device selection...";
+      result.textContent =
+        "Opening Android Bluetooth device selector...";
 
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true
       });
 
-      connectResult.textContent =
+      if (!device.name) {
+        result.textContent =
+          "Device selected, but its name is unavailable. No connection has been made.";
+        return;
+      }
+
+      result.textContent =
         "Selected device: " + device.name +
-        ". Selection does not mean the earbuds are connected or locked.";
+        ". No connection has been established yet.";
+
+      device.addEventListener("gattserverdisconnected", () => {
+        result.textContent =
+          "The Bluetooth device disconnected.";
+      });
+
     } catch (error) {
-      connectResult.textContent =
-        "No device selected. Try again and allow Bluetooth access if prompted.";
+      result.textContent =
+        error.name === "NotFoundError"
+          ? "No device was selected. Open the selector and choose a device."
+          : "Device selection was cancelled or failed. Please try again.";
     }
   });
-}
 
-
+  renderProfile();
+  renderLock();
 </script>
+
 </body>
 </html>
