@@ -324,6 +324,35 @@ if (bluetoothButton && bluetoothResult) {
     }
   });
 }
+  
+const connectButton = document.getElementById("connectBluetooth");
+const connectResult = document.getElementById("connectResult");
+
+if (connectButton && connectResult) {
+  connectButton.addEventListener("click", async () => {
+    if (!navigator.bluetooth) {
+      connectResult.textContent =
+        "Bluetooth device selection is not supported in this browser. Try a compatible version of Chrome.";
+      return;
+    }
+
+    try {
+      connectResult.textContent = "Opening Bluetooth device selection...";
+
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true
+      });
+
+      connectResult.textContent =
+        "Selected device: " + device.name +
+        ". Selection does not mean the earbuds are connected or locked.";
+    } catch (error) {
+      connectResult.textContent =
+        "No device selected. Try again and allow Bluetooth access if prompted.";
+    }
+  });
+}
+
 
 </script>
 </body>
