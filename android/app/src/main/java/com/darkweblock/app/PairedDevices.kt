@@ -47,12 +47,7 @@ private fun BluetoothDevice.toPairedDevice(): PairedDevice {
         name = name,
         alias = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) alias else null,
         address = address,
-        type = when (type) {
-            BluetoothDevice.DEVICE_TYPE_CLASSIC -> "Classic (BR/EDR)"
-            BluetoothDevice.DEVICE_TYPE_LE -> "Low Energy (BLE) only"
-            BluetoothDevice.DEVICE_TYPE_DUAL -> "Dual mode (Classic + BLE)"
-            else -> "Unknown"
-        },
+        type = deviceTypeLabel(type),
         majorClass = btClass?.let { majorClassLabel(it.majorDeviceClass) } ?: "Not reported",
         deviceClass = btClass?.let { deviceClassLabel(it.deviceClass) } ?: "Not reported",
         // BluetoothClass.hashCode() is the raw class-of-device value.
@@ -60,6 +55,13 @@ private fun BluetoothDevice.toPairedDevice(): PairedDevice {
         isAudio = btClass?.majorDeviceClass == BluetoothClass.Device.Major.AUDIO_VIDEO,
         services = uuids?.map { serviceFor(it.uuid.toString()) }?.distinctBy { it.uuid },
     )
+}
+
+internal fun deviceTypeLabel(type: Int) = when (type) {
+    BluetoothDevice.DEVICE_TYPE_CLASSIC -> "Classic (BR/EDR)"
+    BluetoothDevice.DEVICE_TYPE_LE -> "Low Energy (BLE) only"
+    BluetoothDevice.DEVICE_TYPE_DUAL -> "Dual mode (Classic + BLE)"
+    else -> "Unknown"
 }
 
 internal fun majorClassLabel(major: Int) = when (major) {
@@ -119,6 +121,7 @@ private val knownServices = mapOf(
     "184e" to "Audio Stream Control (LE Audio)",
     "1850" to "Published Audio Capabilities (LE Audio)",
     "fe2c" to "Google Fast Pair",
+    "feaa" to "Eddystone (Google beacon format)",
 )
 
 internal fun serviceFor(uuid: String): Service {

@@ -23,10 +23,14 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 
-/** A device that answered a Classic (BR/EDR) inquiry — the search Samsung settings uses. */
+/**
+ * A device reported by Android's device search (the one Samsung settings uses).
+ * Android mixes some BLE devices into these results, so [type] says which it is.
+ */
 data class ClassicResult(
     val address: String,
     val name: String?,
+    val type: String,
     val rssi: Int?,
     val majorClass: String,
     val deviceClass: String,
@@ -42,11 +46,14 @@ data class BleResult(
     val rssi: Int,
     val connectable: Boolean,
     val services: List<Service>,
-    val serviceData: List<Service>,
+    val serviceData: List<ServiceDataEntry>,
     val manufacturer: List<ManufacturerData>,
     val isPaired: Boolean,
     val timesSeen: Int,
 )
+
+/** Bytes a BLE advert attaches to one service; the first byte often says what kind of frame it is. */
+data class ServiceDataEntry(val service: Service, val hex: String)
 
 data class ManufacturerData(val companyId: Int, val hex: String) {
     val company: String get() = companyName(companyId)
@@ -72,6 +79,10 @@ class NearbyScanner(private val context: Context) {
     var baseline by mutableStateOf<Set<String>?>(null)
         private set
 
+    /** True while the results on screen are the very scan that was saved as the baseline. */
+    var showingBaselineScan by mutableStateOf(false)
+        private set
+
     val classic = mutableStateMapOf<String, ClassicResult>()
     val ble = mutableStateMapOf<String, BleResult>()
 
@@ -87,10 +98,12 @@ class NearbyScanner(private val context: Context) {
 
     fun saveBaseline() {
         baseline = (classic.keys + ble.keys).toSet()
+        showingBaselineScan = true
     }
 
     fun clearBaseline() {
         baseline = null
+        showingBaselineScan = false
     }
 
     @SuppressLint("MissingPermission")
@@ -136,6 +149,7 @@ class NearbyScanner(private val context: Context) {
 
         if (problems.isNotEmpty()) error = problems.joinToString(" ")
         hasScanned = true
+        showingBaselineScan = false
         scanning = true
         secondsLeft = SCAN_SECONDS
         handler.postDelayed(tick, 1000)
@@ -188,6 +202,7 @@ class NearbyScanner(private val context: Context) {
             classic[device.address] = ClassicResult(
                 address = device.address,
                 name = name ?: previous?.name,
+                type = runCatching { deviceTypeLabel(device.type) }.getOrDefault("Unknown"),
                 rssi = rssi ?: previous?.rssi,
                 majorClass = btClass?.let { majorClassLabel(it.majorDeviceClass) } ?: previous?.majorClass ?: "Not reported",
                 deviceClass = btClass?.let { deviceClassLabel(it.deviceClass) } ?: previous?.deviceClass ?: "Not reported",
@@ -232,7 +247,10 @@ class NearbyScanner(private val context: Context) {
             connectable = result.isConnectable,
             // Adverts and scan responses can carry different fields, so keep everything seen.
             services = merge(previous?.services, scanRecord?.serviceUuids?.map { serviceFor(it.uuid.toString()) }),
-            serviceData = merge(previous?.serviceData, scanRecord?.serviceData?.keys?.map { serviceFor(it.uuid.toString()) }),
+            serviceData = (
+                scanRecord?.serviceData?.map { (uuid, bytes) -> ServiceDataEntry(serviceFor(uuid.uuid.toString()), bytes.toHex()) }
+                    .orEmpty() + previous?.serviceData.orEmpty()
+                ).distinctBy { it.service.uuid },
             manufacturer = (previous?.manufacturer.orEmpty() + manufacturer).distinct(),
             isPaired = address in bonded,
             timesSeen = (previous?.timesSeen ?: 0) + 1,
@@ -261,24 +279,28 @@ fun nearbyScanReport(scanner: NearbyScanner): String = buildString {
     appendLine("Dark Web Lock — nearby scan report")
     appendLine("Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), ${Build.MANUFACTURER} ${Build.MODEL}")
     appendLine("Listening only; nothing was connected to.")
-    scanner.baseline?.let { appendLine("Baseline (earbuds off) saved with ${it.size} devices. NEW = not in baseline.") }
-
-    appendLine()
-    appendLine("CLASSIC (${scanner.classic.size})")
-    scanner.classic.values.sortedByDescending { it.rssi ?: Int.MIN_VALUE }.forEach { d ->
-        val tags = listOfNotNull("PAIRED".takeIf { d.isPaired }, "NEW".takeIf { scanner.isNew(d.address) })
-        appendLine("• ${d.name ?: "(no name)"} ${tags.joinToString(" ")}".trimEnd())
-        appendLine("  ${d.address} · ${d.rssi?.let { "$it dBm" } ?: "signal ?"} · ${d.majorClass} / ${d.deviceClass}")
+    when {
+        scanner.baseline == null -> appendLine("No baseline saved.")
+        scanner.showingBaselineScan -> appendLine("THIS IS THE BASELINE SCAN (earbuds off), ${scanner.baseline?.size} devices.")
+        else -> appendLine("Compared with the baseline (earbuds off, ${scanner.baseline?.size} devices). NEW = not in baseline.")
     }
 
     appendLine()
-    appendLine("BLE (${scanner.ble.size})")
+    appendLine("DEVICE SEARCH (${scanner.classic.size}) — Android's search; includes some BLE devices")
+    scanner.classic.values.sortedByDescending { it.rssi ?: Int.MIN_VALUE }.forEach { d ->
+        val tags = listOfNotNull("PAIRED".takeIf { d.isPaired }, "NEW".takeIf { scanner.isNew(d.address) })
+        appendLine("• ${d.name ?: "(no name)"} ${tags.joinToString(" ")}".trimEnd())
+        appendLine("  ${d.address} · ${d.rssi?.let { "$it dBm" } ?: "signal ?"} · ${d.type} · ${d.majorClass} / ${d.deviceClass}")
+    }
+
+    appendLine()
+    appendLine("BLE SCAN (${scanner.ble.size})")
     scanner.ble.values.sortedByDescending { it.rssi }.forEach { d ->
         val tags = listOfNotNull("PAIRED".takeIf { d.isPaired }, "NEW".takeIf { scanner.isNew(d.address) })
         appendLine("• ${d.advertisedName ?: d.systemName ?: "(no name)"} ${tags.joinToString(" ")}".trimEnd())
         appendLine("  ${d.address} · ${d.rssi} dBm · ${if (d.connectable) "connectable" else "not connectable"} · seen ${d.timesSeen}x")
         d.services.forEach { appendLine("  Service: ${it.label} [${it.uuid}]") }
-        d.serviceData.forEach { appendLine("  Service data: ${it.label} [${it.uuid}]") }
+        d.serviceData.forEach { appendLine("  Service data: ${it.service.label} [${it.service.uuid}]: ${it.hex}") }
         d.manufacturer.forEach { appendLine("  Maker data: ${it.company}: ${it.hex}") }
     }
 }

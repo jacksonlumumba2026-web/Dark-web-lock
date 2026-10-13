@@ -51,8 +51,8 @@ fun NearbyScanCard(
         Text("Nearby scan", color = Palette.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(4.dp))
         Text(
-            "Two separate searches for ${NearbyScanner.SCAN_SECONDS} seconds. Classic is how Samsung settings finds " +
-                "devices. BLE is the only kind a website can see. Listening only — nothing is connected.",
+            "Two searches side by side for ${NearbyScanner.SCAN_SECONDS} seconds: Android's device search (what Samsung " +
+                "settings uses) and a BLE scan (the only kind a website can see). Listening only — nothing is connected.",
             color = Palette.Muted,
             fontSize = 14.sp,
             lineHeight = 20.sp,
@@ -130,9 +130,9 @@ private fun ScanBody(
         val ble = scanner.ble.values.sortedByDescending { it.rssi }
 
         Spacer(Modifier.height(20.dp))
-        SectionHeader("Classic", classic.size)
+        SectionHeader("Device search", classic.size)
         Text(
-            "Earbuds usually answer this search only while in pairing mode.",
+            "Android adds some BLE devices here too; the type line says which. Earbuds usually answer only in pairing mode.",
             color = Palette.Muted,
             fontSize = 12.sp,
             lineHeight = 17.sp,
@@ -141,10 +141,10 @@ private fun ScanBody(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             classic.forEach { ClassicRow(it, scanner.isNew(it.address)) }
         }
-        if (classic.isEmpty() && !scanner.scanning) EmptyLine("No Classic devices answered.")
+        if (classic.isEmpty() && !scanner.scanning) EmptyLine("No devices answered.")
 
         Spacer(Modifier.height(20.dp))
-        SectionHeader("BLE", ble.size)
+        SectionHeader("BLE scan", ble.size)
         Text(
             "Unnamed entries here are what browsers list as \"Unknown device\".",
             color = Palette.Muted,
@@ -182,7 +182,16 @@ private fun BaselineSection(scanner: NearbyScanner) {
     ) {
         Text("Which entries are my earbuds?", color = Palette.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(6.dp))
-        if (baseline == null) {
+        if (scanner.showingBaselineScan) {
+            Text(
+                "Saved: the results below ARE the \"earbuds off\" baseline (${baseline?.size} devices). " +
+                    "Now take the earbuds out, wait until they connect, and tap Scan again.",
+                color = Palette.Good,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
+            TextButton(onClick = scanner::clearBaseline) { Text("Clear baseline", color = Palette.Accent) }
+        } else if (baseline == null) {
             Text(
                 "1. Put the earbuds in their case and close it.\n" +
                     "2. Scan, then save the result as the baseline.\n" +
@@ -211,6 +220,13 @@ private fun BaselineSection(scanner: NearbyScanner) {
     }
 }
 
+private fun shortType(type: String) = when {
+    type.startsWith("Classic") -> "Classic"
+    type.startsWith("Low Energy") -> "BLE"
+    type.startsWith("Dual") -> "Dual"
+    else -> "type ?"
+}
+
 @Composable
 private fun SectionHeader(label: String, count: Int) {
     Text(
@@ -232,7 +248,7 @@ private fun ClassicRow(device: ClassicResult, isNew: Boolean) {
     ResultRow(
         key = "c-${device.address}",
         title = device.name ?: "(no name)",
-        subtitle = "${device.address} · ${device.rssi?.let { "$it dBm" } ?: "signal ?"}",
+        subtitle = "${device.address} · ${device.rssi?.let { "$it dBm" } ?: "signal ?"} · ${shortType(device.type)}",
         tags = listOfNotNull(
             ("NEW" to Palette.Good).takeIf { isNew },
             ("PAIRED" to Palette.Accent).takeIf { device.isPaired },
@@ -242,6 +258,7 @@ private fun ClassicRow(device: ClassicResult, isNew: Boolean) {
         Detail("Name", device.name ?: "(none reported)")
         Detail("Address", device.address, mono = true)
         Detail("Signal", device.rssi?.let { "$it dBm" } ?: "Not reported")
+        Detail("Type", device.type)
         Detail("Class", "${device.majorClass} / ${device.deviceClass}")
     }
 }
@@ -263,15 +280,27 @@ private fun BleRow(device: BleResult, isNew: Boolean) {
         Detail("Signal", "${device.rssi} dBm")
         Detail("Connectable", if (device.connectable) "Yes" else "No (broadcast only)")
         Detail("Seen", "${device.timesSeen} times")
-        if (device.services.isNotEmpty() || device.serviceData.isNotEmpty()) {
+        if (device.services.isNotEmpty()) {
             Spacer(Modifier.height(6.dp))
             Text("Advertised services", color = Palette.Muted, fontSize = 12.sp, letterSpacing = 1.sp)
-            (device.services + device.serviceData).distinctBy { it.uuid }.forEach {
+            device.services.forEach {
                 Text(
                     (if (it.isVendor) "◆ " else "• ") + it.label,
                     color = if (it.isVendor) Palette.Warn else Palette.Text,
                     fontSize = 13.sp,
                 )
+            }
+        }
+        if (device.serviceData.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text("Service data", color = Palette.Muted, fontSize = 12.sp, letterSpacing = 1.sp)
+            device.serviceData.forEach {
+                Text(
+                    (if (it.service.isVendor) "◆ " else "• ") + it.service.label,
+                    color = if (it.service.isVendor) Palette.Warn else Palette.Text,
+                    fontSize = 13.sp,
+                )
+                Text(it.hex, color = Palette.Muted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
             }
         }
         if (device.manufacturer.isNotEmpty()) {

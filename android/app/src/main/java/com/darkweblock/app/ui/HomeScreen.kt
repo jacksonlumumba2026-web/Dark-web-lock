@@ -101,7 +101,7 @@ fun HomeScreen(
             )
             ScopeCard()
             Text(
-                "v0.3 · Step 3 · Test build",
+                "v0.3.1 · Step 3 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
