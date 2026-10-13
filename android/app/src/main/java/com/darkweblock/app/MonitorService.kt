@@ -16,6 +16,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.CancellationSignal
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -38,6 +39,8 @@ class MonitorService : Service() {
 
     /** When each device last connected, so a quick re-case does not raise an alert. */
     private val connectedSince = mutableMapOf<String, Long>()
+
+    private var locationSignal: CancellationSignal? = null
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = handle(intent)
@@ -77,6 +80,7 @@ class MonitorService : Service() {
     }
 
     override fun onDestroy() {
+        locationSignal?.cancel()
         runCatching { unregisterReceiver(receiver) }
         setEnabled(applicationContext, false)
         super.onDestroy()
@@ -124,8 +128,13 @@ class MonitorService : Service() {
     /** Overwrites the just-logged disconnect with a copy carrying the location. */
     private fun attachLocation(address: String, at: Long) {
         if (!isLocationEnabled(applicationContext) || !DeviceLocation.hasPermission(this)) return
-        val fix = DeviceLocation.lastKnown(this) ?: return
-        log.updateLocation(address, at, fix.lat, fix.lon, fix.accuracyM)
+        // Save last-known immediately so there is always a pin, then upgrade it
+        // with a fresh, more accurate fix when it arrives.
+        DeviceLocation.lastKnown(this)?.let { log.updateLocation(address, at, it.lat, it.lon, it.accuracyM) }
+        locationSignal?.cancel()
+        locationSignal = DeviceLocation.requestFresh(this) { fix ->
+            if (fix != null) log.updateLocation(address, at, fix.lat, fix.lon, fix.accuracyM)
+        }
     }
 
     @SuppressLint("MissingPermission")

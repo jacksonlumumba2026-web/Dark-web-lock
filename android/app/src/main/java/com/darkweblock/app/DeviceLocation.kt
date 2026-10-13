@@ -5,6 +5,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.Build
+import android.os.CancellationSignal
 
 /** A single location reading. */
 data class LocationFix(val lat: Double, val lon: Double, val accuracyM: Float?, val timeMillis: Long)
@@ -40,5 +42,43 @@ object DeviceLocation {
             if (best == null || location.time > best.time) best = location
         }
         return best?.let { LocationFix(it.latitude, it.longitude, if (it.hasAccuracy()) it.accuracy else null, it.time) }
+    }
+
+    /**
+     * Requests a single fresh fix (more accurate than [lastKnown], a few seconds
+     * and a little battery). Falls back to last-known on older Android or if no
+     * fix arrives. [onResult] runs on the main thread. Returns a signal the caller
+     * can cancel. Accuracy is still limited by GPS: good outdoors, poor indoors.
+     */
+    @SuppressLint("MissingPermission")
+    fun requestFresh(context: Context, onResult: (LocationFix?) -> Unit): CancellationSignal? {
+        if (!hasPermission(context)) {
+            onResult(null)
+            return null
+        }
+        val lm = context.getSystemService(LocationManager::class.java)
+        if (lm == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            onResult(lastKnown(context))
+            return null
+        }
+        val provider = when {
+            lm.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+            else -> {
+                onResult(lastKnown(context))
+                return null
+            }
+        }
+        val signal = CancellationSignal()
+        runCatching {
+            lm.getCurrentLocation(provider, signal, context.mainExecutor) { location ->
+                val fix = location?.let {
+                    LocationFix(it.latitude, it.longitude, if (it.hasAccuracy()) it.accuracy else null, it.time)
+                }
+                // If the fresh fix came back empty, fall back to the last-known one.
+                onResult(fix ?: lastKnown(context))
+            }
+        }.onFailure { onResult(lastKnown(context)) }
+        return signal
     }
 }

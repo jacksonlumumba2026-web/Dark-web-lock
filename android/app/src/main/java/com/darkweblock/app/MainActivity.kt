@@ -287,14 +287,31 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun recordEvent(device: PairedDevice, connected: Boolean) {
-        val entry = LogEntry(
-            address = device.address,
-            name = device.alias ?: device.name ?: "(no name)",
-            connected = connected,
-            epochMillis = System.currentTimeMillis(),
+        val at = System.currentTimeMillis()
+        connectionLog.add(
+            LogEntry(
+                address = device.address,
+                name = device.alias ?: device.name ?: "(no name)",
+                connected = connected,
+                epochMillis = at,
+            ),
         )
-        connectionLog.add(entry)
         logEntries.value = connectionLog.entries()
+
+        // When location saving is on, capture where the phone is on a disconnect,
+        // the same as the background service does.
+        if (!connected && MonitorService.isLocationEnabled(this) && DeviceLocation.hasPermission(this)) {
+            DeviceLocation.lastKnown(this)?.let {
+                connectionLog.updateLocation(device.address, at, it.lat, it.lon, it.accuracyM)
+                logEntries.value = connectionLog.entries()
+            }
+            DeviceLocation.requestFresh(this) { fix ->
+                if (fix != null) {
+                    connectionLog.updateLocation(device.address, at, fix.lat, fix.lon, fix.accuracyM)
+                    logEntries.value = connectionLog.entries()
+                }
+            }
+        }
     }
 
     private fun clearLog() {

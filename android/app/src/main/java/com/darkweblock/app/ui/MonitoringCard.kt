@@ -127,8 +127,8 @@ fun MonitoringCard(
             )
         }
         Text(
-            "Uses the phone's last-known location, which may be a few minutes old. It is saved only on " +
-                "this phone and never uploaded. It cannot track the earbuds themselves — only where your phone was.",
+            "Takes a fresh GPS fix when they disconnect (good outdoors, weaker indoors), saved only on this " +
+                "phone and never uploaded. It records where your phone was, not the earbuds themselves.",
             color = Palette.Muted,
             fontSize = 12.sp,
             lineHeight = 17.sp,
