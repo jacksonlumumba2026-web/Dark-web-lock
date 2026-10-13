@@ -1,0 +1,294 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#090b10">
+<title>Dark Web Lock</title>
+<style>
+:root {
+  --bg:#090b10;
+  --panel:#131720;
+  --line:#252c39;
+  --text:#f4f6fb;
+  --muted:#98a2b5;
+  --blue:#5c8dff;
+  --red:#ff5268;
+  --green:#42d9a0;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:Arial,sans-serif; min-height:100vh;
+}
+main { max-width:480px; margin:auto; padding:24px 18px 36px; }
+header { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
+.logo {
+  width:46px;height:46px;border-radius:15px;
+  display:grid;place-items:center;background:#202b45;
+  border:1px solid #35466b;font-size:24px;
+}
+h1 {font-size:20px;margin:0 0 5px;}
+header p,.muted {color:var(--muted);font-size:13px;margin:0;}
+.tag {
+  display:inline-block;padding:6px 10px;border-radius:20px;
+  background:#2b2116;color:#ffc878;font-size:11px;
+  font-weight:bold;letter-spacing:.5px;
+}
+h2 {font-size:17px;margin:0 0 15px;}
+.panel {
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:19px;padding:19px;margin-bottom:16px;
+}
+.status-row {display:flex;align-items:center;gap:14px;}
+.status-icon {
+  width:48px;height:48px;display:grid;place-items:center;
+  border-radius:15px;background:#202b45;font-size:24px;
+}
+.status-row strong {display:block;margin-bottom:5px;}
+.status-row .muted {line-height:1.5;}
+.pill {
+  margin-left:auto;font-size:11px;font-weight:bold;
+  padding:7px 9px;border-radius:20px;background:#30251b;
+  color:#ffc878;white-space:nowrap;
+}
+.pill.locked {background:#302027;color:#ff8292;}
+.pill.unlocked {background:#163127;color:#66e5b2;}
+input {
+  display:block;width:100%;margin:9px 0 15px;
+  padding:14px;border-radius:11px;border:1px solid var(--line);
+  background:#0b0e15;color:var(--text);font-size:15px;
+  outline:none;
+}
+input:focus {border-color:var(--blue);}
+label {font-size:13px;color:#c4cada;}
+button {
+  width:100%;padding:14px;border:0;border-radius:12px;
+  font-size:14px;font-weight:bold;cursor:pointer;
+  background:var(--blue);color:white;margin-top:8px;
+}
+button.secondary {background:#252c39;color:var(--text);}
+button.danger {background:#3a2028;color:#ff9aaa;}
+button:active {opacity:.8;}
+.big-status {
+  text-align:center;padding:15px 0 19px;
+}
+.lock-symbol {font-size:52px;margin-bottom:12px;}
+.big-status h2 {font-size:22px;margin-bottom:9px;}
+.big-status p {color:var(--muted);font-size:13px;line-height:1.6;}
+.notice {
+  border:1px solid #624a29;background:#261e14;
+  color:#ffd49b;padding:13px;border-radius:12px;
+  font-size:12px;line-height:1.6;margin-bottom:16px;
+}
+.row {
+  display:flex;justify-content:space-between;gap:12px;
+  padding:12px 0;border-bottom:1px solid var(--line);
+  font-size:13px;
+}
+.row:last-child {border-bottom:0;}
+.row span:first-child {color:var(--muted);}
+.row span:last-child {text-align:right;overflow-wrap:anywhere;}
+.small {font-size:11px;color:var(--muted);line-height:1.6;}
+.hidden {display:none;}
+footer {text-align:center;padding:12px;font-size:11px;color:var(--muted);}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo">🔐</div>
+  <div>
+    <h1>DARK WEB LOCK</h1>
+    <p>Personal headphone security lab</p>
+  </div>
+</header>
+
+<div style="margin-bottom:18px">
+  <span class="tag">PROTOTYPE V1 · SIMULATION ONLY</span>
+</div>
+
+<section id="registration" class="panel">
+  <h2>Register owner</h2>
+  <p class="muted" style="line-height:1.6;margin-bottom:18px">
+    Create your local demo profile to start testing the interface.
+  </p>
+  <form id="ownerForm">
+    <label for="owner">Owner name</label>
+    <input id="owner" placeholder="Enter your name"
+      maxlength="50" required>
+    <label for="phone">Your device label</label>
+    <input id="phone" placeholder="e.g. My Samsung A07"
+      maxlength="60" required>
+    <label for="earbuds">Headphone name</label>
+    <input id="earbuds" value="Dark web" maxlength="60" required>
+    <button type="submit">Register demo owner</button>
+  </form>
+  <p class="small" style="margin-top:14px">
+    Demo only: registration does not prove device identity or
+    protect the profile from someone who can access this browser.
+  </p>
+</section>
+
+<section id="dashboard" class="hidden">
+  <div class="panel">
+    <div class="status-row">
+      <div class="status-icon">🎧</div>
+      <div>
+        <strong id="headphoneName">Dark web</strong>
+        <p class="muted">TWS Bluetooth earbuds</p>
+      </div>
+      <span class="pill">NOT VERIFIED</span>
+    </div>
+    <div class="row">
+      <span>Bluetooth connection</span>
+      <span>Not checked</span>
+    </div>
+    <div class="row">
+      <span>Registered owner</span>
+      <span id="ownerDisplay">—</span>
+    </div>
+    <div class="row">
+      <span>Authorized phone label</span>
+      <span id="phoneDisplay">—</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="big-status">
+      <div class="lock-symbol" id="lockSymbol">🔒</div>
+      <h2 id="lockTitle">Demo lock is ON</h2>
+      <p id="lockDescription">
+        This is a simulated status. Your earbuds are not
+        being locked by this webpage.
+      </p>
+      <span class="tag">SIMULATED LOCK</span>
+    </div>
+    <button id="toggleLock">Turn demo lock OFF</button>
+    <button class="secondary" id="testButton">
+      Run ownership demo test
+    </button>
+    <p id="testResult" class="small" style="margin-top:14px">
+      No test has been run.
+    </p>
+  </div>
+
+  <div class="notice">
+    <strong>Security limitation</strong><br>
+    This webpage cannot block Bluetooth pairing, disable stolen
+    earbuds or verify that the connected phone is physically yours.
+    The lock button changes only this demonstration.
+  </div>
+
+  <div class="panel">
+    <h2>Owner profile</h2>
+    <p class="muted" style="margin-bottom:12px">
+      Stored locally in this browser for demonstration.
+    </p>
+    <button class="secondary" id="editButton">Edit owner details</button>
+    <button class="danger" id="resetButton">Erase demo profile</button>
+  </div>
+</section>
+
+<footer> DARK WEB LOCK · EXPERIMENTAL PROJECT </footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY = "darkWebLockDemoProfileV1";
+let locked = true;
+
+function loadProfile() {
+  try {
+    const value = localStorage.getItem(KEY);
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+function showRegistration(profile = null) {
+  $("registration").classList.remove("hidden");
+  $("dashboard").classList.add("hidden");
+  if (profile) {
+    $("owner").value = profile.owner || "";
+    $("phone").value = profile.phone || "";
+    $("earbuds").value = profile.earbuds || "Dark web";
+  }
+}
+
+function showDashboard(profile) {
+  $("registration").classList.add("hidden");
+  $("dashboard").classList.remove("hidden");
+  $("ownerDisplay").textContent = profile.owner;
+  $("phoneDisplay").textContent = profile.phone;
+  $("headphoneName").textContent = profile.earbuds;
+  renderLock();
+}
+
+function renderLock() {
+  $("lockSymbol").textContent = locked ? "🔒" : "🔓";
+  $("lockTitle").textContent =
+    locked ? "Demo lock is ON" : "Demo lock is OFF";
+  $("lockDescription").textContent = locked
+    ? "The simulated lock is enabled in this webpage only."
+    : "The simulated lock is disabled in this webpage only.";
+  $("toggleLock").textContent =
+    locked ? "Turn demo lock OFF" : "Turn demo lock ON";
+  $("toggleLock").className = locked ? "danger" : "";
+}
+
+$("ownerForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const profile = {
+    owner: $("owner").value.trim(),
+    phone: $("phone").value.trim(),
+    earbuds: $("earbuds").value.trim()
+  };
+  if (!profile.owner || !profile.phone || !profile.earbuds) {
+    alert("Complete all fields first.");
+    return;
+  }
+  try {
+    localStorage.setItem(KEY, JSON.stringify(profile));
+    locked = true;
+    showDashboard(profile);
+  } catch {
+    alert("Storage unavailable. Try another browser.");
+  }
+});
+
+$("toggleLock").addEventListener("click", () => {
+  locked = !locked;
+  renderLock();
+});
+
+$("testButton").addEventListener("click", () => {
+  $("testResult").textContent =
+    "DEMO PASSED: the profile exists and the simulated lock can " +
+    "change state. Real Bluetooth ownership verification has NOT " +
+    "been performed.";
+});
+
+$("editButton").addEventListener("click", () => {
+  showRegistration(loadProfile());
+});
+
+$("resetButton").addEventListener("click", () => {
+  if (confirm("Erase the saved demo profile from this browser?")) {
+    localStorage.removeItem(KEY);
+    locked = true;
+    showRegistration();
+  }
+});
+
+const existing = loadProfile();
+if (existing && existing.owner && existing.phone && existing.earbuds) {
+  showDashboard(existing);
+} else {
+  showRegistration();
+}
+</script>
+</body>
+</html>
