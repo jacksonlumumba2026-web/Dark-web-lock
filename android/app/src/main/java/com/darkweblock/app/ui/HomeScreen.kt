@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkweblock.app.BluetoothStatus
 import com.darkweblock.app.ConnectionStatus
+import com.darkweblock.app.LogEntry
 import com.darkweblock.app.NearbyScanner
 import com.darkweblock.app.PermissionState
 import com.darkweblock.app.PairedDevice
@@ -47,6 +48,7 @@ fun HomeScreen(
     pairedDevices: List<PairedDevice>,
     serviceLookups: Map<String, String>,
     connectionStatus: Map<String, ConnectionStatus>,
+    logEntries: List<LogEntry>,
     scanner: NearbyScanner,
     onRefresh: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
@@ -58,6 +60,8 @@ fun HomeScreen(
     onStartScan: () -> Unit,
     onStopScan: () -> Unit,
     onShareScanReport: () -> Unit,
+    onClearLog: () -> Unit,
+    onShareLog: () -> Unit,
 ) {
     Box(
         Modifier
@@ -102,9 +106,14 @@ fun HomeScreen(
                 onStopScan = onStopScan,
                 onShareReport = onShareScanReport,
             )
+            ConnectionLogCard(
+                entries = logEntries,
+                onClear = onClearLog,
+                onShare = onShareLog,
+            )
             ScopeCard()
             Text(
-                "v0.4 · Step 4 · Test build",
+                "v0.5 · Step 5 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
@@ -243,7 +252,7 @@ private fun ScopeCard() {
         Spacer(Modifier.height(10.dp))
         listOf(
             "Checks whether this phone has Bluetooth and whether it is on.",
-            "Lists paired devices and whether each one is connected right now, read live from Android.",
+            "Lists paired devices, whether each is connected right now, and a log of connects/disconnects seen while open.",
             "Scans nearby for 15 seconds only when you tap Scan. It only listens; it never connects or pairs.",
             "Asks only for \"Nearby devices\", only when you tap a button, and never uses it for location.",
             "Does not lock, block or control earbuds. That needs proof of support from the earbuds' firmware.",

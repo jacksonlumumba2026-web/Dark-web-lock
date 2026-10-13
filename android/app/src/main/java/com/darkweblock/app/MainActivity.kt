@@ -56,6 +56,14 @@ class MainActivity : ComponentActivity() {
     /** Live connection status per paired device address. */
     private val connectionStatus = mutableStateMapOf<String, ConnectionStatus>()
 
+    private lateinit var connectionLog: ConnectionLog
+
+    /** Connection history entries, newest first, shown in the UI. */
+    private val logEntries = mutableStateOf<List<LogEntry>>(emptyList())
+
+    /** Last connected/disconnected value witnessed per address, to detect transitions. */
+    private val lastConnected = mutableMapOf<String, Boolean>()
+
     // Only used as "something changed" signals; state is always re-read from
     // the adapter rather than trusted from the broadcast.
     private val stateReceiver = object : BroadcastReceiver() {
@@ -106,6 +114,8 @@ class MainActivity : ComponentActivity() {
         )
         scanner = NearbyScanner(applicationContext)
         connectionReader = ConnectionStatusReader(applicationContext)
+        connectionLog = ConnectionLog(applicationContext)
+        logEntries.value = connectionLog.entries()
         refresh()
 
         setContent {
@@ -117,6 +127,7 @@ class MainActivity : ComponentActivity() {
                     pairedDevices = pairedDevices.value,
                     serviceLookups = serviceLookups,
                     connectionStatus = connectionStatus,
+                    logEntries = logEntries.value,
                     scanner = scanner,
                     onRefresh = ::refresh,
                     onOpenBluetoothSettings = ::openBluetoothSettings,
@@ -128,6 +139,8 @@ class MainActivity : ComponentActivity() {
                     onStartScan = scanner::start,
                     onStopScan = scanner::stop,
                     onShareScanReport = { share("Dark Web Lock nearby scan report", nearbyScanReport(scanner)) },
+                    onClearLog = ::clearLog,
+                    onShareLog = { share("Dark Web Lock connection history", connectionLogReport(logEntries.value)) },
                 )
             }
         }
@@ -194,9 +207,46 @@ class MainActivity : ComponentActivity() {
             connectionStatus.clear()
             return
         }
+        // Profile proxies may not be bound yet; skip recording until at least one is,
+        // so an early "unknown" is never logged as a disconnect.
+        var anyKnown = false
         pairedDevices.value.forEach { device ->
-            connectionStatus[device.address] = connectionReader.statusFor(device.address)
+            val current = connectionReader.statusFor(device.address)
+            connectionStatus[device.address] = current
+
+            val known = current.music != ProfileState.UNKNOWN || current.calls != ProfileState.UNKNOWN
+            if (!known) return@forEach
+            anyKnown = true
+
+            val wasConnected = lastConnected[device.address]
+            val isConnected = current.isConnected
+            when {
+                // First reliable reading this session: set a baseline without logging,
+                // because we cannot know when an already-connected device connected.
+                wasConnected == null -> lastConnected[device.address] = isConnected
+                wasConnected != isConnected -> {
+                    lastConnected[device.address] = isConnected
+                    recordEvent(device, isConnected)
+                }
+            }
         }
+        if (!anyKnown) return
+    }
+
+    private fun recordEvent(device: PairedDevice, connected: Boolean) {
+        val entry = LogEntry(
+            address = device.address,
+            name = device.alias ?: device.name ?: "(no name)",
+            connected = connected,
+            epochMillis = System.currentTimeMillis(),
+        )
+        connectionLog.add(entry)
+        logEntries.value = connectionLog.entries()
+    }
+
+    private fun clearLog() {
+        connectionLog.clear()
+        logEntries.value = emptyList()
     }
 
     // Reading the paired list: Android 12+ needs "Nearby devices"; older versions
