@@ -36,6 +36,9 @@ class MonitorService : Service() {
     private lateinit var log: ConnectionLog
     private val lastConnected = mutableMapOf<String, Boolean>()
 
+    /** When each device last connected, so a quick re-case does not raise an alert. */
+    private val connectedSince = mutableMapOf<String, Long>()
+
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = handle(intent)
     }
@@ -99,16 +102,22 @@ class MonitorService : Service() {
         if (lastConnected[device.address] == connected) return
         lastConnected[device.address] = connected
 
+        val now = System.currentTimeMillis()
         val name = deviceName(device)
-        log.add(
-            LogEntry(
-                address = device.address,
-                name = name,
-                connected = connected,
-                epochMillis = System.currentTimeMillis(),
-            ),
-        )
-        if (!connected) alertLeftBehind(name)
+        log.add(LogEntry(device.address, name, connected, now))
+
+        if (connected) {
+            connectedSince[device.address] = now
+            return
+        }
+
+        // Alert on disconnect only if the device had been connected long enough,
+        // so taking the earbuds out and putting them straight back does not alert.
+        // If we never saw it connect (already connected when monitoring began),
+        // treat it as a real left-behind and alert.
+        val since = connectedSince.remove(device.address)
+        val connectedLongEnough = since == null || now - since >= ALERT_MIN_CONNECTED_MS
+        if (connectedLongEnough) alertLeftBehind(name)
     }
 
     @SuppressLint("MissingPermission")
@@ -181,6 +190,7 @@ class MonitorService : Service() {
         private const val CHANNEL_ONGOING = "monitoring"
         private const val CHANNEL_ALERT = "alerts"
         private const val ONGOING_ID = 1001
+        private const val ALERT_MIN_CONNECTED_MS = 60_000L
         private const val PREF = "dark_web_lock"
         private const val KEY_ENABLED = "monitoring_enabled"
 

@@ -15,6 +15,7 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -66,6 +67,7 @@ class MainActivity : ComponentActivity() {
 
     private val monitoring = mutableStateOf(false)
     private val notificationsAllowed = mutableStateOf(true)
+    private val batteryUnrestricted = mutableStateOf(true)
 
     // Only used as "something changed" signals; state is always re-read from
     // the adapter rather than trusted from the broadcast.
@@ -142,6 +144,7 @@ class MainActivity : ComponentActivity() {
                     logEntries = logEntries.value,
                     monitoring = monitoring.value,
                     notificationsAllowed = notificationsAllowed.value,
+                    batteryUnrestricted = batteryUnrestricted.value,
                     scanner = scanner,
                     onRefresh = ::refresh,
                     onOpenBluetoothSettings = ::openBluetoothSettings,
@@ -156,6 +159,7 @@ class MainActivity : ComponentActivity() {
                     onClearLog = ::clearLog,
                     onShareLog = { share("Dark Web Lock connection history", connectionLogReport(logEntries.value)) },
                     onSetMonitoring = ::setMonitoring,
+                    onOpenBatterySettings = ::openBatterySettings,
                 )
             }
         }
@@ -209,6 +213,8 @@ class MainActivity : ComponentActivity() {
         notificationsAllowed.value =
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        batteryUnrestricted.value =
+            getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) ?: true
         connectPermission.value = readPermission(connectPermissions, KEY_ASKED_CONNECT)
         scanPermission.value = readPermission(scanPermissions, KEY_ASKED_SCAN)
         pairedDevices.value =
@@ -341,6 +347,16 @@ class MainActivity : ComponentActivity() {
         startActivity(
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
         )
+    }
+
+    /** Opens the battery-optimisation list so the user can set this app to Unrestricted. */
+    private fun openBatterySettings() {
+        val list = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        if (list.resolveActivity(packageManager) != null) {
+            startActivity(list)
+        } else {
+            openAppSettings()
+        }
     }
 
     private fun share(subject: String, text: String) {

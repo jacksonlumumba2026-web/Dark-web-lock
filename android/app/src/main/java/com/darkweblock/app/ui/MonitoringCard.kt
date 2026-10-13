@@ -1,5 +1,7 @@
 package com.darkweblock.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,8 +23,10 @@ import androidx.compose.ui.unit.sp
 fun MonitoringCard(
     monitoring: Boolean,
     notificationsAllowed: Boolean,
+    batteryUnrestricted: Boolean,
     onSetMonitoring: (Boolean) -> Unit,
     onOpenAppSettings: () -> Unit,
+    onOpenBatterySettings: () -> Unit,
 ) {
     Card {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -59,10 +63,38 @@ fun MonitoringCard(
         Spacer(Modifier.height(12.dp))
         listOf(
             "Android shows a permanent quiet notice while this runs. That is required; it cannot be hidden.",
+            "Alerts only if the earbuds had been connected for at least a minute, so briefly re-casing them does not alert.",
             "Uses a little extra battery. Turn it off any time with this switch or the notice's Stop button.",
             "It still cannot lock or control the earbuds. It only watches and notifies.",
-            "If Android runs low on memory it may pause the service until you reopen the app.",
         ).forEach { Bullet(it) }
+
+        Spacer(Modifier.height(14.dp))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                .background(Palette.Ink.copy(alpha = 0.55f))
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Battery optimisation", color = Palette.Text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    if (batteryUnrestricted) {
+                        "Unrestricted — monitoring can run reliably."
+                    } else {
+                        "Restricted — Samsung may stop monitoring in the background. Set this app to Unrestricted."
+                    },
+                    color = if (batteryUnrestricted) Palette.Good else Palette.Warn,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
+            }
+        }
+        if (!batteryUnrestricted) {
+            Spacer(Modifier.height(10.dp))
+            PrimaryButton("Fix battery setting", onOpenBatterySettings)
+        }
 
         if (monitoring && !notificationsAllowed) {
             Spacer(Modifier.height(14.dp))

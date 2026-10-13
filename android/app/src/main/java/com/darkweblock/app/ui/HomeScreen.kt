@@ -51,6 +51,7 @@ fun HomeScreen(
     logEntries: List<LogEntry>,
     monitoring: Boolean,
     notificationsAllowed: Boolean,
+    batteryUnrestricted: Boolean,
     scanner: NearbyScanner,
     onRefresh: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
@@ -65,6 +66,7 @@ fun HomeScreen(
     onClearLog: () -> Unit,
     onShareLog: () -> Unit,
     onSetMonitoring: (Boolean) -> Unit,
+    onOpenBatterySettings: () -> Unit,
 ) {
     Box(
         Modifier
@@ -112,8 +114,10 @@ fun HomeScreen(
             MonitoringCard(
                 monitoring = monitoring,
                 notificationsAllowed = notificationsAllowed,
+                batteryUnrestricted = batteryUnrestricted,
                 onSetMonitoring = onSetMonitoring,
                 onOpenAppSettings = onOpenAppSettings,
+                onOpenBatterySettings = onOpenBatterySettings,
             )
             ConnectionLogCard(
                 entries = logEntries,
@@ -122,7 +126,7 @@ fun HomeScreen(
             )
             ScopeCard()
             Text(
-                "v0.6 · Step 6 · Test build",
+                "v0.6.1 · Step 6 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
