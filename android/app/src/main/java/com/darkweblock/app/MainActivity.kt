@@ -329,19 +329,18 @@ class MainActivity : ComponentActivity() {
         ownerProfile.value = OwnerProfile()
     }
 
-    /** The audio device the dashboard features: the first paired audio device, else the first. */
-    private fun primaryDevice(): PairedDevice? =
-        pairedDevices.value.firstOrNull { it.isAudio } ?: pairedDevices.value.firstOrNull()
+    private fun lastSeenText(address: String): String {
+        if (connectionStatus[address]?.isConnected == true) return "Connected now"
+        return logEntries.value.firstOrNull { it.address == address && it.connected }
+            ?.let { formatEventTime(it.epochMillis) } ?: "No record yet"
+    }
 
     private fun shareOwnership() {
-        val device = primaryDevice() ?: return
-        val connection = connectionStatus[device.address]
-        val seen = when {
-            connection?.isConnected == true -> "Connected now"
-            else -> logEntries.value.firstOrNull { it.address == device.address && it.connected }
-                ?.let { formatEventTime(it.epochMillis) } ?: "No record yet"
-        }
-        share("Dark Web Lock ownership record", ownershipRecord(ownerProfile.value, device, connection, seen))
+        if (pairedDevices.value.isEmpty()) return
+        share(
+            "Dark Web Lock ownership record",
+            ownershipRecord(ownerProfile.value, pairedDevices.value, connectionStatus, ::lastSeenText),
+        )
     }
 
     private fun setMonitoring(enabled: Boolean) {

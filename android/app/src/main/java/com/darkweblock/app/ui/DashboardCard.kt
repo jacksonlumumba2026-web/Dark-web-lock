@@ -43,8 +43,8 @@ import com.darkweblock.app.formatEventTime
 @Composable
 fun DashboardCard(
     profile: OwnerProfile,
-    device: PairedDevice?,
-    connection: ConnectionStatus?,
+    devices: List<PairedDevice>,
+    connectionStatus: Map<String, ConnectionStatus>,
     logEntries: List<LogEntry>,
     onSave: (OwnerProfile) -> Unit,
     onClear: () -> Unit,
@@ -65,39 +65,83 @@ fun DashboardCard(
         Spacer(Modifier.height(14.dp))
 
         if (editing) {
-            OwnerForm(profile, device, onSave = { onSave(it); editing = false }, onCancel = { editing = false }.takeIf { profile.isRegistered })
+            OwnerForm(profile, onSave = { onSave(it); editing = false }, onCancel = { editing = false }.takeIf { profile.isRegistered })
         } else {
-            RegisteredView(
-                profile = profile,
-                device = device,
-                connection = connection,
-                logEntries = logEntries,
-                onEdit = { editing = true },
-                onClear = onClear,
-                onShareCertificate = onShareCertificate,
-                onOpenMap = onOpenMap,
+            Text(profile.ownerName, color = Palette.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            if (profile.contact.isNotBlank()) Text(profile.contact, color = Palette.Muted, fontSize = 14.sp)
+
+            Spacer(Modifier.height(16.dp))
+            Text(
+                if (devices.isEmpty()) "No devices" else "${devices.size} ${if (devices.size == 1) "device" else "devices"}",
+                color = Palette.Muted,
+                fontSize = 12.sp,
+                letterSpacing = 1.sp,
             )
+            Spacer(Modifier.height(10.dp))
+
+            if (devices.isEmpty()) {
+                Text(
+                    "Pair your earbuds or speaker and grant Nearby devices to track them here.",
+                    color = Palette.Muted,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    devices.forEach { device ->
+                        DeviceTile(
+                            device = device,
+                            connection = connectionStatus[device.address],
+                            logEntries = logEntries,
+                            onOpenMap = onOpenMap,
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Device facts are read from Android, not typed in. This is an ownership and location record — " +
+                    "it cannot stop anyone else pairing with the devices.",
+                color = Palette.Muted,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+            )
+
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onShareCertificate,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent),
+                enabled = devices.isNotEmpty(),
+            ) { Text("Share ownership record", fontWeight = FontWeight.SemiBold) }
+            Spacer(Modifier.height(8.dp))
+            Row {
+                OutlinedButton(
+                    onClick = { editing = true },
+                    modifier = Modifier.weight(1f).height(50.dp),
+                    shape = RoundedCornerShape(16.dp),
+                ) { Text("Edit owner", color = Palette.Text) }
+                Spacer(Modifier.width(10.dp))
+                TextButton(onClick = onClear, modifier = Modifier.height(50.dp)) {
+                    Text("Remove", color = Palette.Bad)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun RegisteredView(
-    profile: OwnerProfile,
-    device: PairedDevice?,
+private fun DeviceTile(
+    device: PairedDevice,
     connection: ConnectionStatus?,
     logEntries: List<LogEntry>,
-    onEdit: () -> Unit,
-    onClear: () -> Unit,
-    onShareCertificate: () -> Unit,
     onOpenMap: (Double, Double, String) -> Unit,
 ) {
-    Text(profile.ownerName, color = Palette.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
-    if (profile.contact.isNotBlank()) {
-        Text(profile.contact, color = Palette.Muted, fontSize = 14.sp)
-    }
+    var expanded by remember(device.address) { mutableStateOf(false) }
+    val title = device.alias ?: device.name ?: "(no name)"
 
-    Spacer(Modifier.height(18.dp))
     Box(
         Modifier
             .fillMaxWidth()
@@ -108,71 +152,33 @@ private fun RegisteredView(
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Registered device", color = Palette.Muted, fontSize = 12.sp, letterSpacing = 1.sp)
-                    Text(
-                        profile.deviceLabel.ifBlank { device?.let { it.alias ?: it.name ?: "(no name)" } ?: "No device" },
-                        color = Palette.Text,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    Text(title, color = Palette.Text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text(device.deviceClass, color = Palette.Muted, fontSize = 12.sp)
                 }
                 LiveDot(connection)
             }
 
-            if (device != null) {
-                Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
+            Fact("Status now", connection?.summary ?: "Checking…")
+            Fact("Last seen connected", lastSeen(device.address, connection, logEntries))
+
+            val place = lastKnownPlace(device.address, logEntries)
+            if (place != null) {
+                Spacer(Modifier.height(12.dp))
+                LastKnownPlace(place, title, onOpenMap)
+            }
+
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = { expanded = !expanded }, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                Text(if (expanded) "Hide details" else "More details", color = Palette.Accent, fontSize = 13.sp)
+            }
+            if (expanded) {
+                Fact("Name from device", device.name ?: "(none)")
                 Fact("Address", device.address, mono = true)
                 Fact("Type", device.type)
-                Fact("Class", device.deviceClass)
+                Fact("Class", "${device.majorClass} / ${device.deviceClass}")
                 Fact("Audio profiles", audioProfiles(device))
-                Fact("Status now", connection?.summary ?: "Checking…")
-                Fact("Last seen connected", lastSeen(device.address, connection, logEntries))
-
-                val place = lastKnownPlace(device.address, logEntries)
-                if (place != null) {
-                    Spacer(Modifier.height(12.dp))
-                    val label = profile.deviceLabel.ifBlank { device.alias ?: device.name ?: "Earbuds" }
-                    LastKnownPlace(place, label, onOpenMap)
-                }
-            } else {
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "Pair your earbuds and grant Nearby devices to link verified details here.",
-                    color = Palette.Muted,
-                    fontSize = 13.sp,
-                    lineHeight = 19.sp,
-                )
             }
-        }
-    }
-
-    Spacer(Modifier.height(10.dp))
-    Text(
-        "These device facts are read from Android, not typed in. This is an ownership record and an " +
-            "evidence trail — it cannot stop anyone else pairing with the earbuds.",
-        color = Palette.Muted,
-        fontSize = 12.sp,
-        lineHeight = 17.sp,
-    )
-
-    Spacer(Modifier.height(16.dp))
-    Button(
-        onClick = onShareCertificate,
-        modifier = Modifier.fillMaxWidth().height(52.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent),
-        enabled = device != null,
-    ) { Text("Share ownership record", fontWeight = FontWeight.SemiBold) }
-    Spacer(Modifier.height(8.dp))
-    Row {
-        OutlinedButton(
-            onClick = onEdit,
-            modifier = Modifier.weight(1f).height(50.dp),
-            shape = RoundedCornerShape(16.dp),
-        ) { Text("Edit", color = Palette.Text) }
-        Spacer(Modifier.width(10.dp))
-        TextButton(onClick = onClear, modifier = Modifier.height(50.dp)) {
-            Text("Remove", color = Palette.Bad)
         }
     }
 }
@@ -180,15 +186,11 @@ private fun RegisteredView(
 @Composable
 private fun OwnerForm(
     profile: OwnerProfile,
-    device: PairedDevice?,
     onSave: (OwnerProfile) -> Unit,
     onCancel: (() -> Unit)?,
 ) {
     var name by remember { mutableStateOf(profile.ownerName) }
     var contact by remember { mutableStateOf(profile.contact) }
-    var label by remember {
-        mutableStateOf(profile.deviceLabel.ifBlank { device?.let { it.alias ?: it.name ?: "" } ?: "" })
-    }
 
     Text(
         if (profile.isRegistered) "Edit owner details" else "Register as owner",
@@ -202,11 +204,10 @@ private fun OwnerForm(
 
     Field("Owner name", name, "Your name") { name = it.take(60) }
     Field("Contact (optional)", contact, "Phone or email") { contact = it.take(80) }
-    Field("Device label (optional)", label, "e.g. My TWS earbuds") { label = it.take(60) }
 
     Spacer(Modifier.height(8.dp))
     Button(
-        onClick = { onSave(OwnerProfile(name.trim(), contact.trim(), label.trim())) },
+        onClick = { onSave(OwnerProfile(name.trim(), contact.trim(), profile.deviceLabel)) },
         enabled = name.isNotBlank(),
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = RoundedCornerShape(16.dp),
@@ -302,12 +303,7 @@ private fun LastKnownPlace(entry: LogEntry, label: String, onOpenMap: (Double, D
                 color = Palette.Text,
                 fontSize = 14.sp,
             )
-            Text(
-                "%.5f, %.5f".format(lat, lon),
-                color = Palette.Muted,
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Monospace,
-            )
+            Text("%.5f, %.5f".format(lat, lon), color = Palette.Muted, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
             Spacer(Modifier.height(10.dp))
             Button(
                 onClick = { onOpenMap(lat, lon, label) },
@@ -319,7 +315,6 @@ private fun LastKnownPlace(entry: LogEntry, label: String, onOpenMap: (Double, D
     }
 }
 
-/** The most recent disconnect for this device that captured a location. */
 private fun lastKnownPlace(address: String, logEntries: List<LogEntry>): LogEntry? =
     logEntries.firstOrNull { it.address == address && it.hasLocation }
 

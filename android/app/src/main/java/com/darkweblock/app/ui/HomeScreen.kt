@@ -100,9 +100,8 @@ fun HomeScreen(
             Header()
             DashboardCard(
                 profile = ownerProfile,
-                device = pairedDevices.firstOrNull { it.isAudio } ?: pairedDevices.firstOrNull(),
-                connection = (pairedDevices.firstOrNull { it.isAudio } ?: pairedDevices.firstOrNull())
-                    ?.let { connectionStatus[it.address] },
+                devices = pairedDevices,
+                connectionStatus = connectionStatus,
                 logEntries = logEntries,
                 onSave = onSaveOwner,
                 onClear = onClearOwner,
@@ -150,7 +149,7 @@ fun HomeScreen(
             )
             ScopeCard()
             Text(
-                "v0.8.3 · Step 8c · Test build",
+                "v0.9 · Step 9 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
