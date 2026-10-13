@@ -6,12 +6,15 @@
         android:name="android.hardware.bluetooth"
         android:required="false" />
 
-    <!-- Android 11 and older only: install-time permission needed to read whether
-         Bluetooth is on. Android 12+ needs no permission for this, so nothing is
-         requested at runtime in this build. -->
+    <!-- Android 11 and older only: install-time permission for reading Bluetooth
+         state and the paired list. -->
     <uses-permission
         android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
+
+    <!-- Android 12+: "Nearby devices" runtime permission, asked for only when the
+         user taps the button, to read the paired list. No scan permission yet. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
         android:allowBackup="false"

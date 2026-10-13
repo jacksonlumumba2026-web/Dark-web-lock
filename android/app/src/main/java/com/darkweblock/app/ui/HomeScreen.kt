@@ -34,12 +34,19 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkweblock.app.BluetoothStatus
+import com.darkweblock.app.ConnectPermission
+import com.darkweblock.app.PairedDevice
 
 @Composable
 fun HomeScreen(
     status: BluetoothStatus,
+    permission: ConnectPermission,
+    pairedDevices: List<PairedDevice>,
     onRefresh: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
+    onRequestPermission: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+    onShareReport: () -> Unit,
 ) {
     Box(
         Modifier
@@ -63,9 +70,17 @@ fun HomeScreen(
         ) {
             Header()
             StatusCard(status, onRefresh, onOpenBluetoothSettings)
+            PairedDevicesCard(
+                status = status,
+                permission = permission,
+                devices = pairedDevices,
+                onRequestPermission = onRequestPermission,
+                onOpenAppSettings = onOpenAppSettings,
+                onShareReport = onShareReport,
+            )
             ScopeCard()
             Text(
-                "v0.1 · Step 1 · Test build",
+                "v0.2 · Step 2 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
@@ -108,7 +123,7 @@ private fun Header() {
 }
 
 @Composable
-private fun Card(content: @Composable () -> Unit) {
+internal fun Card(content: @Composable () -> Unit) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -121,7 +136,7 @@ private fun Card(content: @Composable () -> Unit) {
     ) { content() }
 }
 
-private data class Pill(val label: String, val color: Color)
+internal data class Pill(val label: String, val color: Color)
 
 private fun supportedPill(status: BluetoothStatus) =
     if (status == BluetoothStatus.NOT_SUPPORTED) Pill("NO", Palette.Bad) else Pill("YES", Palette.Good)
@@ -173,7 +188,7 @@ private fun StatusCard(
 }
 
 @Composable
-private fun StatusRow(label: String, pill: Pill) {
+internal fun StatusRow(label: String, pill: Pill) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -204,7 +219,8 @@ private fun ScopeCard() {
         Spacer(Modifier.height(10.dp))
         listOf(
             "Checks whether this phone has Bluetooth and whether it is on.",
-            "Asks for no permissions and does not scan for or connect to any device.",
+            "Lists devices already paired with this phone. Paired means saved — not connected.",
+            "Asks only for \"Nearby devices\", and only when you tap the button. Does not scan for or connect to any device.",
             "Does not lock, block or control earbuds. That needs proof of support from the earbuds' firmware.",
         ).forEach {
             Row(Modifier.padding(vertical = 5.dp)) {
