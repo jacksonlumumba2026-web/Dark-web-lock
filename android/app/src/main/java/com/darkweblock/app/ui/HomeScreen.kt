@@ -49,6 +49,8 @@ fun HomeScreen(
     serviceLookups: Map<String, String>,
     connectionStatus: Map<String, ConnectionStatus>,
     logEntries: List<LogEntry>,
+    monitoring: Boolean,
+    notificationsAllowed: Boolean,
     scanner: NearbyScanner,
     onRefresh: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
@@ -62,6 +64,7 @@ fun HomeScreen(
     onShareScanReport: () -> Unit,
     onClearLog: () -> Unit,
     onShareLog: () -> Unit,
+    onSetMonitoring: (Boolean) -> Unit,
 ) {
     Box(
         Modifier
@@ -106,6 +109,12 @@ fun HomeScreen(
                 onStopScan = onStopScan,
                 onShareReport = onShareScanReport,
             )
+            MonitoringCard(
+                monitoring = monitoring,
+                notificationsAllowed = notificationsAllowed,
+                onSetMonitoring = onSetMonitoring,
+                onOpenAppSettings = onOpenAppSettings,
+            )
             ConnectionLogCard(
                 entries = logEntries,
                 onClear = onClearLog,
@@ -113,7 +122,7 @@ fun HomeScreen(
             )
             ScopeCard()
             Text(
-                "v0.5 · Step 5 · Test build",
+                "v0.6 · Step 6 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,

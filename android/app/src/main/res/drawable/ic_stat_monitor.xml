@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon: must be a flat white silhouette on transparent. A padlock. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2 A5,5 0 0,0 7,7 L7,9 L9,9 L9,7 A3,3 0 0,1 15,7 L15,9 L17,9 L17,7 A5,5 0 0,0 12,2 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,10 A1.5,1.5 0 0,0 4.5,11.5 L4.5,20 A1.5,1.5 0 0,0 6,21.5 L18,21.5 A1.5,1.5 0 0,0 19.5,20 L19.5,11.5 A1.5,1.5 0 0,0 18,10 Z M12,13 A1.8,1.8 0 0,1 13,16.3 L13,18 L11,18 L11,16.3 A1.8,1.8 0 0,1 12,13 Z" />
+</vector>

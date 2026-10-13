@@ -64,6 +64,9 @@ class MainActivity : ComponentActivity() {
     /** Last connected/disconnected value witnessed per address, to detect transitions. */
     private val lastConnected = mutableMapOf<String, Boolean>()
 
+    private val monitoring = mutableStateOf(false)
+    private val notificationsAllowed = mutableStateOf(true)
+
     // Only used as "something changed" signals; state is always re-read from
     // the adapter rather than trusted from the broadcast.
     private val stateReceiver = object : BroadcastReceiver() {
@@ -104,6 +107,15 @@ class MainActivity : ComponentActivity() {
     private val requestPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
 
+    private val requestNotifications =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            notificationsAllowed.value = granted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+            // Start regardless: the service runs even if the alert channel is blocked,
+            // and the user is told alerts will be silent until they allow notifications.
+            MonitorService.start(applicationContext)
+            monitoring.value = true
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Always light system-bar icons on a transparent bar: the app is dark even
@@ -128,6 +140,8 @@ class MainActivity : ComponentActivity() {
                     serviceLookups = serviceLookups,
                     connectionStatus = connectionStatus,
                     logEntries = logEntries.value,
+                    monitoring = monitoring.value,
+                    notificationsAllowed = notificationsAllowed.value,
                     scanner = scanner,
                     onRefresh = ::refresh,
                     onOpenBluetoothSettings = ::openBluetoothSettings,
@@ -141,6 +155,7 @@ class MainActivity : ComponentActivity() {
                     onShareScanReport = { share("Dark Web Lock nearby scan report", nearbyScanReport(scanner)) },
                     onClearLog = ::clearLog,
                     onShareLog = { share("Dark Web Lock connection history", connectionLogReport(logEntries.value)) },
+                    onSetMonitoring = ::setMonitoring,
                 )
             }
         }
@@ -190,6 +205,10 @@ class MainActivity : ComponentActivity() {
 
     private fun refresh() {
         status.value = readBluetoothStatus(this)
+        monitoring.value = MonitorService.isEnabled(this)
+        notificationsAllowed.value =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         connectPermission.value = readPermission(connectPermissions, KEY_ASKED_CONNECT)
         scanPermission.value = readPermission(scanPermissions, KEY_ASKED_SCAN)
         pairedDevices.value =
@@ -247,6 +266,30 @@ class MainActivity : ComponentActivity() {
     private fun clearLog() {
         connectionLog.clear()
         logEntries.value = emptyList()
+    }
+
+    private fun setMonitoring(enabled: Boolean) {
+        if (!enabled) {
+            MonitorService.stop(this)
+            monitoring.value = false
+            return
+        }
+        // The connected-device foreground service needs BLUETOOTH_CONNECT on
+        // Android 12+; without it the service cannot start. Ask for it first.
+        if (connectPermission.value != PermissionState.GRANTED) {
+            request(connectPermissions, KEY_ASKED_CONNECT)
+            return
+        }
+        // Android 13+ asks for notification permission so the required notice and
+        // the alerts can show. The service starts either way.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        MonitorService.start(this)
+        monitoring.value = true
     }
 
     // Reading the paired list: Android 12+ needs "Nearby devices"; older versions

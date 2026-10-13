@@ -45,9 +45,23 @@ class ConnectionLog(context: Context) {
         }.getOrDefault(emptyList())
     }
 
-    /** Appends an event, keeping the list newest-first and capped. */
+    /**
+     * Appends an event, keeping the list newest-first and capped. A repeat of the
+     * same device + state within [DEDUPE_MS] is dropped, so the A2DP and HFP
+     * profiles firing together, or the app and the background service both seeing
+     * one change, never produce two log lines.
+     */
     fun add(entry: LogEntry) {
-        val updated = (listOf(entry) + entries()).take(MAX_ENTRIES)
+        val current = entries()
+        val latest = current.firstOrNull()
+        if (latest != null &&
+            latest.address == entry.address &&
+            latest.connected == entry.connected &&
+            entry.epochMillis - latest.epochMillis in 0..DEDUPE_MS
+        ) {
+            return
+        }
+        val updated = (listOf(entry) + current).take(MAX_ENTRIES)
         val array = JSONArray()
         updated.forEach { e ->
             array.put(
@@ -67,6 +81,7 @@ class ConnectionLog(context: Context) {
 
     companion object {
         const val MAX_ENTRIES = 200
+        private const val DEDUPE_MS = 5000L
         private const val KEY = "connection_events"
     }
 }
