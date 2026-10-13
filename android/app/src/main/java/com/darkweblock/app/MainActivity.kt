@@ -4,7 +4,9 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothHeadset
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothA2dp
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -49,6 +51,10 @@ class MainActivity : ComponentActivity() {
     private val serviceLookups = mutableStateMapOf<String, String>()
 
     private lateinit var scanner: NearbyScanner
+    private lateinit var connectionReader: ConnectionStatusReader
+
+    /** Live connection status per paired device address. */
+    private val connectionStatus = mutableStateMapOf<String, ConnectionStatus>()
 
     // Only used as "something changed" signals; state is always re-read from
     // the adapter rather than trusted from the broadcast.
@@ -79,6 +85,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val connectionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            // The broadcast only tells us "something changed"; the true state is
+            // always re-read from the profile services.
+            refreshConnections()
+        }
+    }
+
     private val requestPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
 
@@ -91,6 +105,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         scanner = NearbyScanner(applicationContext)
+        connectionReader = ConnectionStatusReader(applicationContext)
         refresh()
 
         setContent {
@@ -101,6 +116,7 @@ class MainActivity : ComponentActivity() {
                     scanPermission = scanPermission.value,
                     pairedDevices = pairedDevices.value,
                     serviceLookups = serviceLookups,
+                    connectionStatus = connectionStatus,
                     scanner = scanner,
                     onRefresh = ::refresh,
                     onOpenBluetoothSettings = ::openBluetoothSettings,
@@ -108,7 +124,7 @@ class MainActivity : ComponentActivity() {
                     onRequestScanPermission = { request(scanPermissions, KEY_ASKED_SCAN) },
                     onOpenAppSettings = ::openAppSettings,
                     onRefreshServices = ::refreshServices,
-                    onShareReport = { share("Dark Web Lock paired devices report", pairedDevicesReport(pairedDevices.value)) },
+                    onShareReport = { share("Dark Web Lock paired devices report", pairedDevicesReport(pairedDevices.value, connectionStatus)) },
                     onStartScan = scanner::start,
                     onStopScan = scanner::stop,
                     onShareScanReport = { share("Dark Web Lock nearby scan report", nearbyScanReport(scanner)) },
@@ -134,6 +150,16 @@ class MainActivity : ComponentActivity() {
             IntentFilter(BluetoothDevice.ACTION_UUID),
             ContextCompat.RECEIVER_EXPORTED,
         )
+        ContextCompat.registerReceiver(
+            this,
+            connectionReceiver,
+            IntentFilter().apply {
+                addAction(BluetoothA2dp.ACTION_CONNECTION_STATE_CHANGED)
+                addAction(BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED)
+            },
+            ContextCompat.RECEIVER_EXPORTED,
+        )
+        connectionReader.start(::refreshConnections)
         // Also picks up changes made in system settings (pairing, unpairing,
         // granting a permission) when the user comes back to the app.
         refresh()
@@ -142,8 +168,10 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         // Scanning drains battery and should never continue in the background.
         scanner.stop()
+        connectionReader.stop()
         unregisterReceiver(stateReceiver)
         unregisterReceiver(uuidReceiver)
+        unregisterReceiver(connectionReceiver)
         super.onStop()
     }
 
@@ -157,6 +185,18 @@ class MainActivity : ComponentActivity() {
             } else {
                 emptyList()
             }
+        refreshConnections()
+    }
+
+    /** Re-reads the live audio-connection status for every paired device. */
+    private fun refreshConnections() {
+        if (connectPermission.value != PermissionState.GRANTED || status.value != BluetoothStatus.ON) {
+            connectionStatus.clear()
+            return
+        }
+        pairedDevices.value.forEach { device ->
+            connectionStatus[device.address] = connectionReader.statusFor(device.address)
+        }
     }
 
     // Reading the paired list: Android 12+ needs "Nearby devices"; older versions

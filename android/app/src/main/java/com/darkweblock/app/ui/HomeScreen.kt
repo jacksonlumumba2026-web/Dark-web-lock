@@ -34,6 +34,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkweblock.app.BluetoothStatus
+import com.darkweblock.app.ConnectionStatus
 import com.darkweblock.app.NearbyScanner
 import com.darkweblock.app.PermissionState
 import com.darkweblock.app.PairedDevice
@@ -45,6 +46,7 @@ fun HomeScreen(
     scanPermission: PermissionState,
     pairedDevices: List<PairedDevice>,
     serviceLookups: Map<String, String>,
+    connectionStatus: Map<String, ConnectionStatus>,
     scanner: NearbyScanner,
     onRefresh: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
@@ -87,6 +89,7 @@ fun HomeScreen(
                 onOpenAppSettings = onOpenAppSettings,
                 onShareReport = onShareReport,
                 serviceLookups = serviceLookups,
+                connectionStatus = connectionStatus,
                 onRefreshServices = onRefreshServices,
             )
             NearbyScanCard(
@@ -101,7 +104,7 @@ fun HomeScreen(
             )
             ScopeCard()
             Text(
-                "v0.3.1 · Step 3 · Test build",
+                "v0.4 · Step 4 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
@@ -240,7 +243,7 @@ private fun ScopeCard() {
         Spacer(Modifier.height(10.dp))
         listOf(
             "Checks whether this phone has Bluetooth and whether it is on.",
-            "Lists devices already paired with this phone. Paired means saved — not connected.",
+            "Lists paired devices and whether each one is connected right now, read live from Android.",
             "Scans nearby for 15 seconds only when you tap Scan. It only listens; it never connects or pairs.",
             "Asks only for \"Nearby devices\", only when you tap a button, and never uses it for location.",
             "Does not lock, block or control earbuds. That needs proof of support from the earbuds' firmware.",

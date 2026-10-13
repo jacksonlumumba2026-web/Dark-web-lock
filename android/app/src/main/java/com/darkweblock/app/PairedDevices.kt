@@ -135,13 +135,17 @@ internal fun serviceFor(uuid: String): Service {
 }
 
 /** Plain-text report the user can share or paste when asking for help. */
-fun pairedDevicesReport(devices: List<PairedDevice>): String = buildString {
+fun pairedDevicesReport(
+    devices: List<PairedDevice>,
+    connectionStatus: Map<String, ConnectionStatus> = emptyMap(),
+): String = buildString {
     appendLine("Dark Web Lock — paired devices report")
     appendLine("Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), ${Build.MANUFACTURER} ${Build.MODEL}")
-    appendLine("Paired = saved on this phone. Connection status was NOT checked.")
+    appendLine("Paired = saved on this phone. Connection = read live from Android's audio profiles.")
     devices.forEach { d ->
         appendLine()
         appendLine("• ${d.alias ?: d.name ?: "(no name)"}")
+        appendLine("  Connection now: ${connectionStatus[d.address]?.summary ?: "not checked"}")
         appendLine("  Name reported by device: ${d.name ?: "(none)"}")
         appendLine("  Address: ${d.address}")
         appendLine("  Type: ${d.type}")

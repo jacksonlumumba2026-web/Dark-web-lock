@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -30,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkweblock.app.BluetoothStatus
+import com.darkweblock.app.ConnectionStatus
+import com.darkweblock.app.ProfileState
 import com.darkweblock.app.PermissionState
 import com.darkweblock.app.PairedDevice
 
@@ -42,6 +45,7 @@ fun PairedDevicesCard(
     onOpenAppSettings: () -> Unit,
     onShareReport: () -> Unit,
     serviceLookups: Map<String, String>,
+    connectionStatus: Map<String, ConnectionStatus>,
     onRefreshServices: (String) -> Unit,
 ) {
     Card {
@@ -90,7 +94,7 @@ fun PairedDevicesCard(
                 )
                 Spacer(Modifier.height(10.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    devices.forEach { DeviceRow(it, serviceLookups[it.address], onRefreshServices) }
+                    devices.forEach { DeviceRow(it, serviceLookups[it.address], connectionStatus[it.address], onRefreshServices) }
                 }
                 Spacer(Modifier.height(16.dp))
                 OutlinedButton(
@@ -104,7 +108,7 @@ fun PairedDevicesCard(
 }
 
 @Composable
-private fun DeviceRow(device: PairedDevice, lookup: String?, onRefreshServices: (String) -> Unit) {
+private fun DeviceRow(device: PairedDevice, lookup: String?, connection: ConnectionStatus?, onRefreshServices: (String) -> Unit) {
     var expanded by rememberSaveable(device.address) { mutableStateOf(false) }
     val title = device.alias ?: device.name ?: "(no name)"
 
@@ -123,8 +127,28 @@ private fun DeviceRow(device: PairedDevice, lookup: String?, onRefreshServices: 
                 Text(device.deviceClass, color = Palette.Muted, fontSize = 13.sp)
             }
             Spacer(Modifier.width(10.dp))
-            Tag(if (device.isAudio) "AUDIO" else "PAIRED", if (device.isAudio) Palette.Accent else Palette.Muted)
+            ConnectionBadge(connection)
         }
+
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val (dotColor, label) = connectionDisplay(connection)
+            androidx.compose.foundation.layout.Box(
+                Modifier
+                    .size(8.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(dotColor),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(label, color = Palette.Text, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        }
+        Text(
+            "Read live from Android's audio connection. Not assumed from being paired.",
+            color = Palette.Muted,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            modifier = Modifier.padding(top = 2.dp),
+        )
 
         if (expanded) {
             Spacer(Modifier.height(12.dp))
@@ -167,12 +191,6 @@ private fun DeviceRow(device: PairedDevice, lookup: String?, onRefreshServices: 
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
                 modifier = Modifier.padding(top = 6.dp),
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Connection status is not checked in this build.",
-                color = Palette.Muted,
-                fontSize = 12.sp,
             )
         }
     }
@@ -229,4 +247,25 @@ internal fun PrimaryButton(label: String, onClick: () -> Unit) {
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent),
     ) { Text(label, fontWeight = FontWeight.SemiBold) }
+}
+
+private fun connectionDisplay(connection: ConnectionStatus?): Pair<androidx.compose.ui.graphics.Color, String> = when {
+    connection == null -> Palette.Muted to "Checking…"
+    connection.isConnected -> Palette.Good to connection.summary
+    connection.music == ProfileState.CONNECTING || connection.calls == ProfileState.CONNECTING ->
+        Palette.Warn to "Connecting…"
+    connection.music == ProfileState.UNKNOWN && connection.calls == ProfileState.UNKNOWN ->
+        Palette.Muted to "Status unavailable"
+    else -> Palette.Bad to "Not connected now"
+}
+
+@Composable
+private fun ConnectionBadge(connection: ConnectionStatus?) {
+    val (color, _) = connectionDisplay(connection)
+    val label = when {
+        connection == null -> "…"
+        connection.isConnected -> "LIVE"
+        else -> "OFFLINE"
+    }
+    Tag(label, color)
 }
