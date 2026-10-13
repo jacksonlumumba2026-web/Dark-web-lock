@@ -300,6 +300,22 @@ if (existing && existing.owner && existing.phone && existing.earbuds) {
 } else {
   showRegistration();
 }
+  
+const bluetoothButton = document.getElementById("bluetoothCheck");
+const bluetoothResult = document.getElementById("bluetoothResult");
+
+if (bluetoothButton && bluetoothResult) {
+  bluetoothButton.addEventListener("click", () => {
+    if ("bluetooth" in navigator) {
+      bluetoothResult.textContent =
+        "Web Bluetooth appears to be available in this browser. This does not confirm that your earbuds are connected.";
+    } else {
+      bluetoothResult.textContent =
+        "Web Bluetooth is not available in this browser. This webpage cannot check your earbuds' connection status.";
+    }
+  });
+}
+
 </script>
 </body>
 </html>
