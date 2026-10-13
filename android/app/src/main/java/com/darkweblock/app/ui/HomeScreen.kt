@@ -34,19 +34,28 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkweblock.app.BluetoothStatus
-import com.darkweblock.app.ConnectPermission
+import com.darkweblock.app.NearbyScanner
+import com.darkweblock.app.PermissionState
 import com.darkweblock.app.PairedDevice
 
 @Composable
 fun HomeScreen(
     status: BluetoothStatus,
-    permission: ConnectPermission,
+    connectPermission: PermissionState,
+    scanPermission: PermissionState,
     pairedDevices: List<PairedDevice>,
+    serviceLookups: Map<String, String>,
+    scanner: NearbyScanner,
     onRefresh: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
-    onRequestPermission: () -> Unit,
+    onRequestConnectPermission: () -> Unit,
+    onRequestScanPermission: () -> Unit,
     onOpenAppSettings: () -> Unit,
+    onRefreshServices: (String) -> Unit,
     onShareReport: () -> Unit,
+    onStartScan: () -> Unit,
+    onStopScan: () -> Unit,
+    onShareScanReport: () -> Unit,
 ) {
     Box(
         Modifier
@@ -72,15 +81,27 @@ fun HomeScreen(
             StatusCard(status, onRefresh, onOpenBluetoothSettings)
             PairedDevicesCard(
                 status = status,
-                permission = permission,
+                permission = connectPermission,
                 devices = pairedDevices,
-                onRequestPermission = onRequestPermission,
+                onRequestPermission = onRequestConnectPermission,
                 onOpenAppSettings = onOpenAppSettings,
                 onShareReport = onShareReport,
+                serviceLookups = serviceLookups,
+                onRefreshServices = onRefreshServices,
+            )
+            NearbyScanCard(
+                status = status,
+                permission = scanPermission,
+                scanner = scanner,
+                onRequestPermission = onRequestScanPermission,
+                onOpenAppSettings = onOpenAppSettings,
+                onStartScan = onStartScan,
+                onStopScan = onStopScan,
+                onShareReport = onShareScanReport,
             )
             ScopeCard()
             Text(
-                "v0.2 · Step 2 · Test build",
+                "v0.3 · Step 3 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
@@ -220,7 +241,8 @@ private fun ScopeCard() {
         listOf(
             "Checks whether this phone has Bluetooth and whether it is on.",
             "Lists devices already paired with this phone. Paired means saved — not connected.",
-            "Asks only for \"Nearby devices\", and only when you tap the button. Does not scan for or connect to any device.",
+            "Scans nearby for 15 seconds only when you tap Scan. It only listens; it never connects or pairs.",
+            "Asks only for \"Nearby devices\", only when you tap a button, and never uses it for location.",
             "Does not lock, block or control earbuds. That needs proof of support from the earbuds' firmware.",
         ).forEach {
             Row(Modifier.padding(vertical = 5.dp)) {

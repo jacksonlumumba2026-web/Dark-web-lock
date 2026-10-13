@@ -62,7 +62,7 @@ private fun BluetoothDevice.toPairedDevice(): PairedDevice {
     )
 }
 
-private fun majorClassLabel(major: Int) = when (major) {
+internal fun majorClassLabel(major: Int) = when (major) {
     BluetoothClass.Device.Major.AUDIO_VIDEO -> "Audio / video"
     BluetoothClass.Device.Major.PHONE -> "Phone"
     BluetoothClass.Device.Major.COMPUTER -> "Computer"
@@ -76,7 +76,7 @@ private fun majorClassLabel(major: Int) = when (major) {
     else -> "Uncategorized"
 }
 
-private fun deviceClassLabel(cls: Int) = when (cls) {
+internal fun deviceClassLabel(cls: Int) = when (cls) {
     BluetoothClass.Device.AUDIO_VIDEO_HEADPHONES -> "Headphones"
     BluetoothClass.Device.AUDIO_VIDEO_WEARABLE_HEADSET -> "Wearable headset"
     BluetoothClass.Device.AUDIO_VIDEO_HANDSFREE -> "Hands-free"
@@ -121,7 +121,7 @@ private val knownServices = mapOf(
     "fe2c" to "Google Fast Pair",
 )
 
-private fun serviceFor(uuid: String): Service {
+internal fun serviceFor(uuid: String): Service {
     val lower = uuid.lowercase()
     if (lower.startsWith("0000") && lower.endsWith(BASE_UUID_SUFFIX)) {
         val short = lower.substring(4, 8)

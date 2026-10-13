@@ -1,7 +1,10 @@
 package com.darkweblock.app
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,13 +20,16 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import com.darkweblock.app.ui.DarkWebLockTheme
 import com.darkweblock.app.ui.HomeScreen
+import java.time.LocalTime
 
-/** Whether the app may read paired devices ("Nearby devices" on Android 12+). */
-enum class ConnectPermission {
+/** Whether a group of runtime permissions is held. */
+enum class PermissionState {
     GRANTED,
     NOT_ASKED,
     DENIED,
@@ -35,22 +41,46 @@ enum class ConnectPermission {
 class MainActivity : ComponentActivity() {
 
     private val status = mutableStateOf(BluetoothStatus.NOT_SUPPORTED)
-    private val permission = mutableStateOf(ConnectPermission.NOT_ASKED)
+    private val connectPermission = mutableStateOf(PermissionState.NOT_ASKED)
+    private val scanPermission = mutableStateOf(PermissionState.NOT_ASKED)
     private val pairedDevices = mutableStateOf<List<PairedDevice>>(emptyList())
 
-    // Only used as a "something changed" signal; the state is always re-read
-    // from the adapter rather than trusted from the broadcast.
+    /** Per-address result of the last "ask the device for its services" request. */
+    private val serviceLookups = mutableStateMapOf<String, String>()
+
+    private lateinit var scanner: NearbyScanner
+
+    // Only used as "something changed" signals; state is always re-read from
+    // the adapter rather than trusted from the broadcast.
     private val stateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == BluetoothAdapter.ACTION_STATE_CHANGED) {
+                if (readBluetoothStatus(context) != BluetoothStatus.ON) scanner.stop()
+            }
             refresh()
         }
     }
 
-    private val requestConnect =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-            prefs().edit().putBoolean(KEY_ASKED_CONNECT, true).apply()
+    private val uuidReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val device = IntentCompat.getParcelableExtra(
+                intent,
+                BluetoothDevice.EXTRA_DEVICE,
+                BluetoothDevice::class.java,
+            ) ?: return
+            val answered = intent.getParcelableArrayExtra(BluetoothDevice.EXTRA_UUID) != null
+            val time = LocalTime.now().withNano(0)
+            serviceLookups[device.address] = if (answered) {
+                "Device answered at $time. List below is up to date."
+            } else {
+                "No answer at $time — the device may be off, in its case or out of range. Showing the saved list."
+            }
             refresh()
         }
+    }
+
+    private val requestPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,19 +90,28 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
+        scanner = NearbyScanner(applicationContext)
         refresh()
 
         setContent {
             DarkWebLockTheme {
                 HomeScreen(
                     status = status.value,
-                    permission = permission.value,
+                    connectPermission = connectPermission.value,
+                    scanPermission = scanPermission.value,
                     pairedDevices = pairedDevices.value,
+                    serviceLookups = serviceLookups,
+                    scanner = scanner,
                     onRefresh = ::refresh,
                     onOpenBluetoothSettings = ::openBluetoothSettings,
-                    onRequestPermission = ::requestPermission,
+                    onRequestConnectPermission = { request(connectPermissions, KEY_ASKED_CONNECT) },
+                    onRequestScanPermission = { request(scanPermissions, KEY_ASKED_SCAN) },
                     onOpenAppSettings = ::openAppSettings,
-                    onShareReport = ::shareReport,
+                    onRefreshServices = ::refreshServices,
+                    onShareReport = { share("Dark Web Lock paired devices report", pairedDevicesReport(pairedDevices.value)) },
+                    onStartScan = scanner::start,
+                    onStopScan = scanner::stop,
+                    onShareScanReport = { share("Dark Web Lock nearby scan report", nearbyScanReport(scanner)) },
                 )
             }
         }
@@ -83,45 +122,79 @@ class MainActivity : ComponentActivity() {
         ContextCompat.registerReceiver(
             this,
             stateReceiver,
-            IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+            IntentFilter().apply {
+                addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+                addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            },
+            ContextCompat.RECEIVER_EXPORTED,
+        )
+        ContextCompat.registerReceiver(
+            this,
+            uuidReceiver,
+            IntentFilter(BluetoothDevice.ACTION_UUID),
             ContextCompat.RECEIVER_EXPORTED,
         )
         // Also picks up changes made in system settings (pairing, unpairing,
-        // granting the permission) when the user comes back to the app.
+        // granting a permission) when the user comes back to the app.
         refresh()
     }
 
     override fun onStop() {
+        // Scanning drains battery and should never continue in the background.
+        scanner.stop()
         unregisterReceiver(stateReceiver)
+        unregisterReceiver(uuidReceiver)
         super.onStop()
     }
 
     private fun refresh() {
         status.value = readBluetoothStatus(this)
-        permission.value = readPermission()
+        connectPermission.value = readPermission(connectPermissions, KEY_ASKED_CONNECT)
+        scanPermission.value = readPermission(scanPermissions, KEY_ASKED_SCAN)
         pairedDevices.value =
-            if (permission.value == ConnectPermission.GRANTED && status.value == BluetoothStatus.ON) {
+            if (connectPermission.value == PermissionState.GRANTED && status.value == BluetoothStatus.ON) {
                 readPairedDevices(this)
             } else {
                 emptyList()
             }
     }
 
-    private fun readPermission(): ConnectPermission {
-        // Android 11 and older: the install-time BLUETOOTH permission covers this.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return ConnectPermission.GRANTED
-        val perm = Manifest.permission.BLUETOOTH_CONNECT
-        return when {
-            checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED -> ConnectPermission.GRANTED
-            !prefs().getBoolean(KEY_ASKED_CONNECT, false) -> ConnectPermission.NOT_ASKED
-            shouldShowRequestPermissionRationale(perm) -> ConnectPermission.DENIED
-            else -> ConnectPermission.BLOCKED
+    // Reading the paired list: Android 12+ needs "Nearby devices"; older versions
+    // are covered by the install-time BLUETOOTH permission.
+    private val connectPermissions =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(Manifest.permission.BLUETOOTH_CONNECT) else emptyList()
+
+    // Scanning: Android 12+ needs "Nearby devices" (declared as never used for
+    // location); Android 11 and older can only scan with location permission.
+    private val scanPermissions =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            listOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+        } else {
+            listOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
+
+    private fun readPermission(perms: List<String>, askedKey: String): PermissionState = when {
+        perms.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED } -> PermissionState.GRANTED
+        !prefs().getBoolean(askedKey, false) -> PermissionState.NOT_ASKED
+        perms.any { shouldShowRequestPermissionRationale(it) } -> PermissionState.DENIED
+        else -> PermissionState.BLOCKED
     }
 
-    private fun requestPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            requestConnect.launch(Manifest.permission.BLUETOOTH_CONNECT)
+    private fun request(perms: List<String>, askedKey: String) {
+        if (perms.isEmpty()) return
+        prefs().edit().putBoolean(askedKey, true).apply()
+        requestPermissions.launch(perms.toTypedArray())
+    }
+
+    /** Asks Android to query the device again for the services it offers (SDP). */
+    @SuppressLint("MissingPermission")
+    private fun refreshServices(address: String) {
+        val adapter = getSystemService(BluetoothManager::class.java)?.adapter ?: return
+        val sent = runCatching { adapter.getRemoteDevice(address).fetchUuidsWithSdp() }.getOrDefault(false)
+        serviceLookups[address] = if (sent) {
+            "Asked at ${LocalTime.now().withNano(0)} — waiting for the device to answer…"
+        } else {
+            "Android could not send the request. Check Bluetooth is on and try again."
         }
     }
 
@@ -137,11 +210,11 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun shareReport() {
+    private fun share(subject: String, text: String) {
         val send = Intent(Intent.ACTION_SEND)
             .setType("text/plain")
-            .putExtra(Intent.EXTRA_SUBJECT, "Dark Web Lock paired devices report")
-            .putExtra(Intent.EXTRA_TEXT, pairedDevicesReport(pairedDevices.value))
+            .putExtra(Intent.EXTRA_SUBJECT, subject)
+            .putExtra(Intent.EXTRA_TEXT, text)
         startActivity(Intent.createChooser(send, "Share report"))
     }
 
@@ -149,5 +222,6 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val KEY_ASKED_CONNECT = "asked_bluetooth_connect"
+        const val KEY_ASKED_SCAN = "asked_bluetooth_scan"
     }
 }

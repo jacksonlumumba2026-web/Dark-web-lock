@@ -30,17 +30,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.darkweblock.app.BluetoothStatus
-import com.darkweblock.app.ConnectPermission
+import com.darkweblock.app.PermissionState
 import com.darkweblock.app.PairedDevice
 
 @Composable
 fun PairedDevicesCard(
     status: BluetoothStatus,
-    permission: ConnectPermission,
+    permission: PermissionState,
     devices: List<PairedDevice>,
     onRequestPermission: () -> Unit,
     onOpenAppSettings: () -> Unit,
     onShareReport: () -> Unit,
+    serviceLookups: Map<String, String>,
+    onRefreshServices: (String) -> Unit,
 ) {
     Card {
         Text("Paired devices", color = Palette.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
@@ -56,7 +58,7 @@ fun PairedDevicesCard(
         when {
             status == BluetoothStatus.NOT_SUPPORTED -> Notice("This phone has no Bluetooth.")
 
-            permission == ConnectPermission.NOT_ASKED || permission == ConnectPermission.DENIED -> {
+            permission == PermissionState.NOT_ASKED || permission == PermissionState.DENIED -> {
                 Notice(
                     "Android needs the \"Nearby devices\" permission before any app can read your paired list. " +
                         "It is used only to read that list on this phone.",
@@ -65,7 +67,7 @@ fun PairedDevicesCard(
                 PrimaryButton("Allow Nearby devices", onRequestPermission)
             }
 
-            permission == ConnectPermission.BLOCKED -> {
+            permission == PermissionState.BLOCKED -> {
                 Notice(
                     "\"Nearby devices\" was denied, so Android will not ask again. To allow it: " +
                         "App settings → Permissions → Nearby devices → Allow.",
@@ -88,7 +90,7 @@ fun PairedDevicesCard(
                 )
                 Spacer(Modifier.height(10.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    devices.forEach { DeviceRow(it) }
+                    devices.forEach { DeviceRow(it, serviceLookups[it.address], onRefreshServices) }
                 }
                 Spacer(Modifier.height(16.dp))
                 OutlinedButton(
@@ -102,7 +104,7 @@ fun PairedDevicesCard(
 }
 
 @Composable
-private fun DeviceRow(device: PairedDevice) {
+private fun DeviceRow(device: PairedDevice, lookup: String?, onRefreshServices: (String) -> Unit) {
     var expanded by rememberSaveable(device.address) { mutableStateOf(false) }
     val title = device.alias ?: device.name ?: "(no name)"
 
@@ -153,6 +155,19 @@ private fun DeviceRow(device: PairedDevice) {
                     }
                 }
             }
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = { onRefreshServices(device.address) },
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) { Text("Ask device for its services again", color = Palette.Text, fontSize = 14.sp) }
+            Text(
+                lookup ?: "The device must be switched on (out of its case) and nearby to answer.",
+                color = if (lookup == null) Palette.Muted else Palette.Text,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                modifier = Modifier.padding(top = 6.dp),
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 "Connection status is not checked in this build.",
@@ -164,7 +179,7 @@ private fun DeviceRow(device: PairedDevice) {
 }
 
 @Composable
-private fun Detail(label: String, value: String, mono: Boolean = false) {
+internal fun Detail(label: String, value: String, mono: Boolean = false) {
     Row(Modifier.padding(vertical = 3.dp)) {
         Text(label, color = Palette.Muted, fontSize = 13.sp, modifier = Modifier.width(128.dp))
         Text(
@@ -177,7 +192,7 @@ private fun Detail(label: String, value: String, mono: Boolean = false) {
 }
 
 @Composable
-private fun Tag(label: String, color: androidx.compose.ui.graphics.Color) {
+internal fun Tag(label: String, color: androidx.compose.ui.graphics.Color) {
     Text(
         label,
         color = color,
@@ -192,7 +207,7 @@ private fun Tag(label: String, color: androidx.compose.ui.graphics.Color) {
 }
 
 @Composable
-private fun Notice(text: String) {
+internal fun Notice(text: String) {
     Text(
         text,
         color = Palette.Text.copy(alpha = 0.85f),
@@ -207,7 +222,7 @@ private fun Notice(text: String) {
 }
 
 @Composable
-private fun PrimaryButton(label: String, onClick: () -> Unit) {
+internal fun PrimaryButton(label: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().height(54.dp),

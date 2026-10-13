@@ -6,15 +6,30 @@
         android:name="android.hardware.bluetooth"
         android:required="false" />
 
-    <!-- Android 11 and older only: install-time permission for reading Bluetooth
-         state and the paired list. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
+
+    <!-- Android 11 and older only: install-time permissions for Bluetooth state,
+         the paired list and discovery; scanning there also needs location. -->
     <uses-permission
         android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
 
-    <!-- Android 12+: "Nearby devices" runtime permission, asked for only when the
-         user taps the button, to read the paired list. No scan permission yet. -->
+    <!-- Android 12+: the "Nearby devices" runtime permissions, asked for only when
+         the user taps a button. CONNECT reads the paired list and device names;
+         SCAN is declared never used for location, so no location permission is
+         needed (Android may then hide some beacon-type adverts from results). -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
 
     <application
         android:allowBackup="false"
