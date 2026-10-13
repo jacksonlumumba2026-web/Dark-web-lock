@@ -14,8 +14,12 @@ data class LogEntry(
     val name: String,
     val connected: Boolean,
     val epochMillis: Long,
+    val lat: Double? = null,
+    val lon: Double? = null,
+    val accuracyM: Float? = null,
 ) {
     val label: String get() = if (connected) "Connected" else "Disconnected"
+    val hasLocation: Boolean get() = lat != null && lon != null
 }
 
 /**
@@ -40,6 +44,9 @@ class ConnectionLog(context: Context) {
                     name = o.getString("name"),
                     connected = o.getBoolean("connected"),
                     epochMillis = o.getLong("time"),
+                    lat = if (o.has("lat")) o.getDouble("lat") else null,
+                    lon = if (o.has("lon")) o.getDouble("lon") else null,
+                    accuracyM = if (o.has("acc")) o.getDouble("acc").toFloat() else null,
                 )
             }
         }.getOrDefault(emptyList())
@@ -64,13 +71,38 @@ class ConnectionLog(context: Context) {
         val updated = (listOf(entry) + current).take(MAX_ENTRIES)
         val array = JSONArray()
         updated.forEach { e ->
-            array.put(
-                JSONObject()
-                    .put("address", e.address)
-                    .put("name", e.name)
-                    .put("connected", e.connected)
-                    .put("time", e.epochMillis),
-            )
+            val o = JSONObject()
+                .put("address", e.address)
+                .put("name", e.name)
+                .put("connected", e.connected)
+                .put("time", e.epochMillis)
+            if (e.lat != null && e.lon != null) {
+                o.put("lat", e.lat).put("lon", e.lon)
+                e.accuracyM?.let { o.put("acc", it.toDouble()) }
+            }
+            array.put(o)
+        }
+        prefs.edit().putString(KEY, array.toString()).apply()
+    }
+
+    /** Adds coordinates to the most recent matching entry (same device, same time). */
+    fun updateLocation(address: String, epochMillis: Long, lat: Double, lon: Double, accuracyM: Float?) {
+        val current = entries().toMutableList()
+        val index = current.indexOfFirst { it.address == address && it.epochMillis == epochMillis }
+        if (index < 0) return
+        current[index] = current[index].copy(lat = lat, lon = lon, accuracyM = accuracyM)
+        val array = JSONArray()
+        current.forEach { e ->
+            val o = JSONObject()
+                .put("address", e.address)
+                .put("name", e.name)
+                .put("connected", e.connected)
+                .put("time", e.epochMillis)
+            if (e.lat != null && e.lon != null) {
+                o.put("lat", e.lat).put("lon", e.lon)
+                e.accuracyM?.let { o.put("acc", it.toDouble()) }
+            }
+            array.put(o)
         }
         prefs.edit().putString(KEY, array.toString()).apply()
     }
@@ -109,5 +141,8 @@ fun connectionLogReport(entries: List<LogEntry>): String = buildString {
     appendLine("Events seen while the app was open. ${entries.size} recorded.")
     entries.forEach { e ->
         appendLine("${formatEventTime(e.epochMillis)} · ${e.label} · ${e.name} (${e.address})")
+        if (e.hasLocation) {
+            appendLine("    Last-known location: ${e.lat}, ${e.lon}" + (e.accuracyM?.let { " (±${it.toInt()} m)" } ?: ""))
+        }
     }
 }

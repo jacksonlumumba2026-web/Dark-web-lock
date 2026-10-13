@@ -54,6 +54,8 @@ fun HomeScreen(
     monitoring: Boolean,
     notificationsAllowed: Boolean,
     batteryUnrestricted: Boolean,
+    locationEnabled: Boolean,
+    locationGranted: Boolean,
     scanner: NearbyScanner,
     onRefresh: () -> Unit,
     onOpenBluetoothSettings: () -> Unit,
@@ -69,6 +71,8 @@ fun HomeScreen(
     onShareLog: () -> Unit,
     onSetMonitoring: (Boolean) -> Unit,
     onOpenBatterySettings: () -> Unit,
+    onSetLocation: (Boolean) -> Unit,
+    onOpenMap: (Double, Double, String) -> Unit,
     onSaveOwner: (OwnerProfile) -> Unit,
     onClearOwner: () -> Unit,
     onShareOwnership: () -> Unit,
@@ -103,6 +107,7 @@ fun HomeScreen(
                 onSave = onSaveOwner,
                 onClear = onClearOwner,
                 onShareCertificate = onShareOwnership,
+                onOpenMap = onOpenMap,
             )
             StatusCard(status, onRefresh, onOpenBluetoothSettings)
             PairedDevicesCard(
@@ -130,18 +135,22 @@ fun HomeScreen(
                 monitoring = monitoring,
                 notificationsAllowed = notificationsAllowed,
                 batteryUnrestricted = batteryUnrestricted,
+                locationEnabled = locationEnabled,
+                locationGranted = locationGranted,
                 onSetMonitoring = onSetMonitoring,
                 onOpenAppSettings = onOpenAppSettings,
                 onOpenBatterySettings = onOpenBatterySettings,
+                onSetLocation = onSetLocation,
             )
             ConnectionLogCard(
                 entries = logEntries,
                 onClear = onClearLog,
                 onShare = onShareLog,
+                onOpenMap = onOpenMap,
             )
             ScopeCard()
             Text(
-                "v0.7 · Step 7 · Test build",
+                "v0.8 · Step 8 · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,
@@ -175,7 +184,7 @@ private fun Header() {
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            "Your earbuds, registered and verified — with honest limits, no fake locks.",
+            "Find your earbuds, know when they disconnect, and see where you last had them.",
             color = Palette.Muted,
             fontSize = 16.sp,
             lineHeight = 23.sp,
@@ -280,7 +289,7 @@ private fun ScopeCard() {
         Spacer(Modifier.height(10.dp))
         listOf(
             "Checks whether this phone has Bluetooth and whether it is on.",
-            "Lists paired devices, whether each is connected right now, and a log of connects/disconnects seen while open.",
+            "Tracks when your earbuds connect and disconnect, and can save where you last had them.",
             "Scans nearby for 15 seconds only when you tap Scan. It only listens; it never connects or pairs.",
             "Asks only for \"Nearby devices\", only when you tap a button, and never uses it for location.",
             "Does not lock, block or control earbuds. That needs proof of support from the earbuds' firmware.",

@@ -110,6 +110,7 @@ class MonitorService : Service() {
             connectedSince[device.address] = now
             return
         }
+        attachLocation(device.address, now)
 
         // Alert on disconnect only if the device had been connected long enough,
         // so taking the earbuds out and putting them straight back does not alert.
@@ -118,6 +119,13 @@ class MonitorService : Service() {
         val since = connectedSince.remove(device.address)
         val connectedLongEnough = since == null || now - since >= ALERT_MIN_CONNECTED_MS
         if (connectedLongEnough) alertLeftBehind(name)
+    }
+
+    /** Overwrites the just-logged disconnect with a copy carrying the location. */
+    private fun attachLocation(address: String, at: Long) {
+        if (!isLocationEnabled(applicationContext) || !DeviceLocation.hasPermission(this)) return
+        val fix = DeviceLocation.lastKnown(this) ?: return
+        log.updateLocation(address, at, fix.lat, fix.lon, fix.accuracyM)
     }
 
     @SuppressLint("MissingPermission")
@@ -143,8 +151,13 @@ class MonitorService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(ONGOING_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            // Add the location type only when location is permitted, or the start throws.
+            if (isLocationEnabled(this) && DeviceLocation.hasPermission(this)) {
+                type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+            }
+            startForeground(ONGOING_ID, notification, type)
         } else {
             startForeground(ONGOING_ID, notification)
         }
@@ -193,6 +206,7 @@ class MonitorService : Service() {
         private const val ALERT_MIN_CONNECTED_MS = 60_000L
         private const val PREF = "dark_web_lock"
         private const val KEY_ENABLED = "monitoring_enabled"
+        private const val KEY_LOCATION = "location_enabled"
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(context, Intent(context, MonitorService::class.java))
@@ -209,6 +223,13 @@ class MonitorService : Service() {
 
         private fun setEnabled(context: Context, enabled: Boolean) {
             context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, enabled).apply()
+        }
+
+        fun isLocationEnabled(context: Context): Boolean =
+            context.getSharedPreferences(PREF, Context.MODE_PRIVATE).getBoolean(KEY_LOCATION, false)
+
+        fun setLocationEnabled(context: Context, enabled: Boolean) {
+            context.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit().putBoolean(KEY_LOCATION, enabled).apply()
         }
     }
 }

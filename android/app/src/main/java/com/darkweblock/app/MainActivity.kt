@@ -70,6 +70,8 @@ class MainActivity : ComponentActivity() {
     private val monitoring = mutableStateOf(false)
     private val notificationsAllowed = mutableStateOf(true)
     private val batteryUnrestricted = mutableStateOf(true)
+    private val locationEnabled = mutableStateOf(false)
+    private val locationGranted = mutableStateOf(false)
 
     // Only used as "something changed" signals; state is always re-read from
     // the adapter rather than trusted from the broadcast.
@@ -111,6 +113,18 @@ class MainActivity : ComponentActivity() {
     private val requestPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
 
+    private val requestLocation =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val granted = result.values.any { it }
+            locationGranted.value = granted
+            MonitorService.setLocationEnabled(applicationContext, granted)
+            locationEnabled.value = granted
+            // Restart the running monitor so it adopts the location service type.
+            if (granted && MonitorService.isEnabled(this)) {
+                MonitorService.start(this)
+            }
+        }
+
     private val requestNotifications =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             notificationsAllowed.value = granted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
@@ -150,6 +164,8 @@ class MainActivity : ComponentActivity() {
                     monitoring = monitoring.value,
                     notificationsAllowed = notificationsAllowed.value,
                     batteryUnrestricted = batteryUnrestricted.value,
+                    locationEnabled = locationEnabled.value,
+                    locationGranted = locationGranted.value,
                     scanner = scanner,
                     onRefresh = ::refresh,
                     onOpenBluetoothSettings = ::openBluetoothSettings,
@@ -165,6 +181,8 @@ class MainActivity : ComponentActivity() {
                     onShareLog = { share("Dark Web Lock connection history", connectionLogReport(logEntries.value)) },
                     onSetMonitoring = ::setMonitoring,
                     onOpenBatterySettings = ::openBatterySettings,
+                    onSetLocation = ::setLocation,
+                    onOpenMap = ::openMap,
                     onSaveOwner = ::saveOwner,
                     onClearOwner = ::clearOwner,
                     onShareOwnership = ::shareOwnership,
@@ -223,6 +241,8 @@ class MainActivity : ComponentActivity() {
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         batteryUnrestricted.value =
             getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(packageName) ?: true
+        locationGranted.value = DeviceLocation.hasPermission(this)
+        locationEnabled.value = MonitorService.isLocationEnabled(this) && locationGranted.value
         connectPermission.value = readPermission(connectPermissions, KEY_ASKED_CONNECT)
         scanPermission.value = readPermission(scanPermissions, KEY_ASKED_SCAN)
         pairedDevices.value =
@@ -380,6 +400,35 @@ class MainActivity : ComponentActivity() {
         startActivity(
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
         )
+    }
+
+    private fun setLocation(enabled: Boolean) {
+        if (!enabled) {
+            MonitorService.setLocationEnabled(this, false)
+            locationEnabled.value = false
+            if (MonitorService.isEnabled(this)) MonitorService.start(this) // drop the location type
+            return
+        }
+        if (!DeviceLocation.hasPermission(this)) {
+            requestLocation.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+            )
+            return
+        }
+        MonitorService.setLocationEnabled(this, true)
+        locationEnabled.value = true
+        if (MonitorService.isEnabled(this)) MonitorService.start(this)
+    }
+
+    /** Opens the device's map app at a saved last-known location. */
+    private fun openMap(lat: Double, lon: Double, label: String) {
+        val uri = Uri.parse("geo:$lat,$lon?q=$lat,$lon(${Uri.encode(label)})")
+        val intent = Intent(Intent.ACTION_VIEW, uri)
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        } else {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/?q=$lat,$lon")))
+        }
     }
 
     /** Opens the battery-optimisation list so the user can set this app to Unrestricted. */

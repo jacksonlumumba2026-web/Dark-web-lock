@@ -24,9 +24,12 @@ fun MonitoringCard(
     monitoring: Boolean,
     notificationsAllowed: Boolean,
     batteryUnrestricted: Boolean,
+    locationEnabled: Boolean,
+    locationGranted: Boolean,
     onSetMonitoring: (Boolean) -> Unit,
     onOpenAppSettings: () -> Unit,
     onOpenBatterySettings: () -> Unit,
+    onSetLocation: (Boolean) -> Unit,
 ) {
     Card {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -95,6 +98,42 @@ fun MonitoringCard(
             Spacer(Modifier.height(10.dp))
             PrimaryButton("Fix battery setting", onOpenBatterySettings)
         }
+
+        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Save where you last had them", color = Palette.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (locationEnabled) {
+                        "On — saves the phone's last-known location each time they disconnect."
+                    } else {
+                        "Off — turn on to record where you were when they disconnected."
+                    },
+                    color = if (locationEnabled) Palette.Good else Palette.Muted,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Switch(
+                checked = locationEnabled,
+                onCheckedChange = onSetLocation,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Palette.Text,
+                    checkedTrackColor = Palette.Accent,
+                    uncheckedTrackColor = Palette.Ink,
+                    uncheckedBorderColor = Palette.Stroke,
+                ),
+            )
+        }
+        Text(
+            "Uses the phone's last-known location, which may be a few minutes old. It is saved only on " +
+                "this phone and never uploaded. It cannot track the earbuds themselves — only where your phone was.",
+            color = Palette.Muted,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+            modifier = Modifier.padding(top = 8.dp),
+        )
 
         if (monitoring && !notificationsAllowed) {
             Spacer(Modifier.height(14.dp))

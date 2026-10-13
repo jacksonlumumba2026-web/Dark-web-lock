@@ -1,6 +1,7 @@
 package com.darkweblock.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ fun ConnectionLogCard(
     entries: List<LogEntry>,
     onClear: () -> Unit,
     onShare: () -> Unit,
+    onOpenMap: (Double, Double, String) -> Unit,
 ) {
     Card {
         Text("Connection history", color = Palette.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
@@ -54,7 +56,7 @@ fun ConnectionLogCard(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            entries.take(30).forEach { EventRow(it) }
+            entries.take(30).forEach { EventRow(it, onOpenMap) }
         }
         if (entries.size > 30) {
             Text(
@@ -82,7 +84,7 @@ fun ConnectionLogCard(
 }
 
 @Composable
-private fun EventRow(entry: LogEntry) {
+private fun EventRow(entry: LogEntry, onOpenMap: (Double, Double, String) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -108,6 +110,18 @@ private fun EventRow(entry: LogEntry) {
             Text(entry.address, color = Palette.Muted, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
         }
         Spacer(Modifier.width(10.dp))
-        Text(formatEventTime(entry.epochMillis), color = Palette.Muted, fontSize = 12.sp)
+        Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+            Text(formatEventTime(entry.epochMillis), color = Palette.Muted, fontSize = 12.sp)
+            if (entry.hasLocation) {
+                Text(
+                    "📍 Map",
+                    color = Palette.Accent,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .clickable { onOpenMap(entry.lat!!, entry.lon!!, entry.name) },
+                )
+            }
+        }
     }
 }

@@ -49,6 +49,7 @@ fun DashboardCard(
     onSave: (OwnerProfile) -> Unit,
     onClear: () -> Unit,
     onShareCertificate: () -> Unit,
+    onOpenMap: (Double, Double, String) -> Unit,
 ) {
     var editing by remember(profile) { mutableStateOf(!profile.isRegistered) }
 
@@ -74,6 +75,7 @@ fun DashboardCard(
                 onEdit = { editing = true },
                 onClear = onClear,
                 onShareCertificate = onShareCertificate,
+                onOpenMap = onOpenMap,
             )
         }
     }
@@ -88,6 +90,7 @@ private fun RegisteredView(
     onEdit: () -> Unit,
     onClear: () -> Unit,
     onShareCertificate: () -> Unit,
+    onOpenMap: (Double, Double, String) -> Unit,
 ) {
     Text(profile.ownerName, color = Palette.Text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
     if (profile.contact.isNotBlank()) {
@@ -124,6 +127,13 @@ private fun RegisteredView(
                 Fact("Audio profiles", audioProfiles(device))
                 Fact("Status now", connection?.summary ?: "Checking…")
                 Fact("Last seen connected", lastSeen(device.address, connection, logEntries))
+
+                val place = lastKnownPlace(device.address, logEntries)
+                if (place != null) {
+                    Spacer(Modifier.height(12.dp))
+                    val label = profile.deviceLabel.ifBlank { device.alias ?: device.name ?: "Earbuds" }
+                    LastKnownPlace(place, label, onOpenMap)
+                }
             } else {
                 Spacer(Modifier.height(10.dp))
                 Text(
@@ -271,6 +281,47 @@ private fun LiveDot(connection: ConnectionStatus?) {
         )
     }
 }
+
+@Composable
+private fun LastKnownPlace(entry: LogEntry, label: String, onOpenMap: (Double, Double, String) -> Unit) {
+    val lat = entry.lat ?: return
+    val lon = entry.lon ?: return
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Palette.Accent.copy(alpha = 0.12f))
+            .padding(14.dp),
+    ) {
+        Column {
+            Text("Where you last had them", color = Palette.Accent, fontSize = 12.sp, letterSpacing = 1.sp)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Disconnected ${formatEventTime(entry.epochMillis)}" +
+                    (entry.accuracyM?.let { " · within ${it.toInt()} m" } ?: ""),
+                color = Palette.Text,
+                fontSize = 14.sp,
+            )
+            Text(
+                "%.5f, %.5f".format(lat, lon),
+                color = Palette.Muted,
+                fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
+            )
+            Spacer(Modifier.height(10.dp))
+            Button(
+                onClick = { onOpenMap(lat, lon, label) },
+                modifier = Modifier.fillMaxWidth().height(46.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent),
+            ) { Text("Open in Maps", fontWeight = FontWeight.SemiBold) }
+        }
+    }
+}
+
+/** The most recent disconnect for this device that captured a location. */
+private fun lastKnownPlace(address: String, logEntries: List<LogEntry>): LogEntry? =
+    logEntries.firstOrNull { it.address == address && !it.connected && it.hasLocation }
 
 private fun audioProfiles(device: PairedDevice): String {
     val labels = device.services?.filter { !it.isVendor }?.map { it.label }?.filter {
