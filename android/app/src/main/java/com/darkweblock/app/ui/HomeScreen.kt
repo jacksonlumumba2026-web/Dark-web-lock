@@ -46,6 +46,9 @@ fun HomeScreen(
     status: BluetoothStatus,
     ownerProfile: OwnerProfile,
     isPro: Boolean,
+    billingAvailable: Boolean,
+    proPrice: String?,
+    isDebug: Boolean,
     connectPermission: PermissionState,
     scanPermission: PermissionState,
     pairedDevices: List<PairedDevice>,
@@ -78,6 +81,7 @@ fun HomeScreen(
     onClearOwner: () -> Unit,
     onShareOwnership: () -> Unit,
     onUnlockPro: () -> Unit,
+    onTestUnlock: () -> Unit,
 ) {
     Box(
         Modifier
@@ -110,7 +114,11 @@ fun HomeScreen(
                 onShareCertificate = onShareOwnership,
                 onOpenMap = onOpenMap,
                 isPro = isPro,
+                billingAvailable = billingAvailable,
+                proPrice = proPrice,
+                isDebug = isDebug,
                 onUnlockPro = onUnlockPro,
+                onTestUnlock = onTestUnlock,
             )
             StatusCard(status, onRefresh, onOpenBluetoothSettings)
             PairedDevicesCard(
@@ -153,7 +161,7 @@ fun HomeScreen(
             )
             ScopeCard()
             Text(
-                "v0.10 · Step 10 · Test build",
+                "v0.10.1 · Step 10b · Test build",
                 color = Palette.Muted.copy(alpha = 0.6f),
                 fontSize = 12.sp,
                 letterSpacing = 1.sp,

@@ -52,7 +52,11 @@ fun DashboardCard(
     onShareCertificate: () -> Unit,
     onOpenMap: (Double, Double, String) -> Unit,
     isPro: Boolean,
+    billingAvailable: Boolean,
+    proPrice: String?,
+    isDebug: Boolean,
     onUnlockPro: () -> Unit,
+    onTestUnlock: () -> Unit,
 ) {
     var editing by remember(profile) { mutableStateOf(!profile.isRegistered) }
 
@@ -105,7 +109,14 @@ fun DashboardCard(
                 }
                 if (!isPro && devices.size > PlanStore.FREE_DEVICE_LIMIT) {
                     Spacer(Modifier.height(12.dp))
-                    ProCard(devices.size - PlanStore.FREE_DEVICE_LIMIT, onUnlockPro)
+                    ProCard(
+                        lockedCount = devices.size - PlanStore.FREE_DEVICE_LIMIT,
+                        billingAvailable = billingAvailable,
+                        price = proPrice,
+                        isDebug = isDebug,
+                        onUnlockPro = onUnlockPro,
+                        onTestUnlock = onTestUnlock,
+                    )
                 }
             }
 
@@ -358,7 +369,14 @@ private fun LockedLocation(onUnlockPro: () -> Unit) {
 }
 
 @Composable
-private fun ProCard(lockedCount: Int, onUnlockPro: () -> Unit) {
+private fun ProCard(
+    lockedCount: Int,
+    billingAvailable: Boolean,
+    price: String?,
+    isDebug: Boolean,
+    onUnlockPro: () -> Unit,
+    onTestUnlock: () -> Unit,
+) {
     Box(
         Modifier
             .fillMaxWidth()
@@ -379,18 +397,27 @@ private fun ProCard(lockedCount: Int, onUnlockPro: () -> Unit) {
                 lineHeight = 19.sp,
             )
             Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onUnlockPro,
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent),
-            ) { Text("Unlock Pro (test)", fontWeight = FontWeight.SemiBold) }
-            Text(
-                "Test unlock — real in-app purchase is not set up yet.",
-                color = Palette.Muted,
-                fontSize = 11.sp,
-                modifier = Modifier.padding(top = 6.dp),
-            )
+            if (billingAvailable) {
+                Button(
+                    onClick = onUnlockPro,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Palette.Accent),
+                ) { Text("Unlock Pro" + (price?.let { " · $it" } ?: ""), fontWeight = FontWeight.SemiBold) }
+            } else {
+                Text(
+                    "In-app purchase is not available yet on this install. It activates once the app is " +
+                        "published with the Pro product.",
+                    color = Palette.Muted,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
+            }
+            if (isDebug) {
+                TextButton(onClick = onTestUnlock, modifier = Modifier.padding(top = 4.dp)) {
+                    Text("Test unlock (debug only)", color = Palette.Accent, fontSize = 12.sp)
+                }
+            }
         }
     }
 }

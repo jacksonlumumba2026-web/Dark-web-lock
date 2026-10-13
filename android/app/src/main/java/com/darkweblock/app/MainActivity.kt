@@ -61,6 +61,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var ownerStore: OwnerStore
     private val ownerProfile = mutableStateOf(OwnerProfile())
     private val isPro = mutableStateOf(false)
+    private val billingAvailable = mutableStateOf(false)
+    private val proPrice = mutableStateOf<String?>(null)
+    private lateinit var billing: BillingManager
 
     /** Connection history entries, newest first, shown in the UI. */
     private val logEntries = mutableStateOf<List<LogEntry>>(emptyList())
@@ -148,6 +151,11 @@ class MainActivity : ComponentActivity() {
         connectionLog = ConnectionLog(applicationContext)
         ownerStore = OwnerStore(applicationContext)
         ownerProfile.value = ownerStore.load()
+        billing = BillingManager(applicationContext) {
+            isPro.value = PlanStore.isPro(this)
+            billingAvailable.value = billing.available
+            proPrice.value = billing.price
+        }
         logEntries.value = connectionLog.entries()
         refresh()
 
@@ -157,6 +165,9 @@ class MainActivity : ComponentActivity() {
                     status = status.value,
                     ownerProfile = ownerProfile.value,
                     isPro = isPro.value,
+                    billingAvailable = billingAvailable.value,
+                    proPrice = proPrice.value,
+                    isDebug = BuildConfig.DEBUG,
                     connectPermission = connectPermission.value,
                     scanPermission = scanPermission.value,
                     pairedDevices = pairedDevices.value,
@@ -188,7 +199,8 @@ class MainActivity : ComponentActivity() {
                     onSaveOwner = ::saveOwner,
                     onClearOwner = ::clearOwner,
                     onShareOwnership = ::shareOwnership,
-                    onUnlockPro = ::unlockProTest,
+                    onUnlockPro = { billing.purchase(this) },
+                    onTestUnlock = ::unlockProTest,
                 )
             }
         }
@@ -221,6 +233,7 @@ class MainActivity : ComponentActivity() {
             ContextCompat.RECEIVER_EXPORTED,
         )
         connectionReader.start(::refreshConnections)
+        billing.start()
         // Also picks up changes made in system settings (pairing, unpairing,
         // granting a permission) when the user comes back to the app.
         refresh()
@@ -230,6 +243,7 @@ class MainActivity : ComponentActivity() {
         // Scanning drains battery and should never continue in the background.
         scanner.stop()
         connectionReader.stop()
+        billing.stop()
         unregisterReceiver(stateReceiver)
         unregisterReceiver(uuidReceiver)
         unregisterReceiver(connectionReceiver)

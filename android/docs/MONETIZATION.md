@@ -10,9 +10,13 @@ phone — it needs your Google Play Console account.
   devices, plus last-known location for **one** device.
 - **Pro (paid):** location tracking + history map for **all** devices.
 
-In the app the Pro state is a local flag. The "Unlock Pro (test)" button flips it
-so you can see the gating work. **There is no real payment yet** — that is the
-Google Play Billing step below.
+Google Play Billing is now wired in (`BillingManager`, product id `pro_unlock`,
+one-time purchase). It stays dormant until that product exists in Play Console
+and the app is installed from a Play track: until then the Pro card says the
+purchase is not available yet, and a debug-only "Test unlock" button lets you
+exercise the gating. Once you create the product, no code change is needed — it
+activates automatically (change `BillingManager.PRODUCT_ID` only if you use a
+different id).
 
 ## What still needs your Play account
 
@@ -26,11 +30,11 @@ and price live there, not in the code. Steps:
    - For a one-time unlock: a *managed product* (e.g. `pro_unlock`).
    - For a subscription: a *subscription* (e.g. `pro_monthly`).
    Pick one; one-time is simpler and buyers often prefer it for a utility app.
-4. Tell me the product id and type, and I will wire in the Google Play Billing
-   library (`com.android.billingclient:billing`) to replace the test unlock:
-   query the product, launch the purchase flow, verify and persist entitlement,
-   and restore purchases. That is "Step 10b" and is a code change I make once the
-   product exists.
+4. Create the managed product with id **`pro_unlock`** (one-time). The billing
+   code already queries, buys, acknowledges, persists and restores this product,
+   so it starts working as soon as the product is live and the app is installed
+   from a Play track (internal testing is enough). Use a different id only if you
+   change `BillingManager.PRODUCT_ID` to match.
 
 ## Store listing (draft copy you can paste)
 
